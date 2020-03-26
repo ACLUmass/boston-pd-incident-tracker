@@ -1,0 +1,13 @@
+name: bpd_incidents_coronavirus
+title: bpd_incidents_coronavirus
+username:
+account: laurenmarietta
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1959734
+bundleId: 2891660
+url: https://laurenmarietta.shinyapps.io/bpd_incidents_coronavirus/
+when: 1584481587.6512
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: www/.DS_Store|www/OneLineLogo_RGB_Massachusetts.png|www/springfield_wards_app.css
