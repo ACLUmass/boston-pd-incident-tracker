@@ -1,12 +1,12 @@
 # This is a basic workflow to help you get started with Actions
 
-name: deploy_develop
+name: deploy_production
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
   push:
-    branches: [ develop ]
+    branches: [ master ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -29,4 +29,4 @@ jobs:
         echo 2 add key && echo "$DEPLOY_KEY" | ssh-add -
         echo 3 make ssh dir && mkdir -p ~/.ssh && chmod 700 ~/.ssh
         echo 4 update known hosts && echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
-        echo 5 rsyncing && rsync -rlDv -e 'ssh' --exclude-from "exclude-deploy.txt" * github@data.aclum.org:/srv/shiny-server/bpd_covid19_app_dev/
+        echo 5 rsyncing && rsync -rlDv -e 'ssh' --exclude-from "exclude-deploy.txt" * github@data.aclum.org:/srv/shiny-server/bpd_covid19_app/
