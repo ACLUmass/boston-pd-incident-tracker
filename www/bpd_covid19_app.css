@@ -39,6 +39,9 @@ body {
   font-family: 'gtam', sans-serif;
   margin-left: 5%;
   margin-right: 5%;
+  
+  /* TEST FOR DEV */
+  color: blue;
 }
 
 h2 {
