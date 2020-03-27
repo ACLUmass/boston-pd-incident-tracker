@@ -14,11 +14,30 @@ violations <- read_csv("data/violations_major_minor.csv")
 group_choices <- c("--", "All", violations %>% pull(incident_group) %>% unique() %>% sort())
 group_choices <- c(group_choices[group_choices != "Other"], "Other")
 
+# Define modal UI explaining incident types
+modal_text <- list()
+i <- 1
+for (grp in group_choices[3:28]) {
+  modal_text[[i]] <- h3(grp)
+  i <- i + 1
+  
+  incidents_in_grp <- violations %>%
+    filter(incident_group == grp) %>%
+    mutate(code_desc = paste(OFFENSE_CODE, desc, sep=" - ")) %>%
+    arrange(desc) %>%
+    pull(code_desc)
+  
+  for (incident in incidents_in_grp) {
+    modal_text[[i]] <- p(incident)
+    i <- i + 1
+  }
+}
+
 # Load all incidents
 df_all <- read_rds("data/all_bpd_incidents.rds") %>%
   mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
   merge(violations, 
-        by.x="OFFENSE_CODE", by.y="CODE")
+        by="OFFENSE_CODE")
 
 # Load time of last query
 last_query_time <- read_rds("data/query_log.rds") %>%
@@ -63,7 +82,8 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       tabPanel("Incidents by Type",
                wellPanel(
-                 p("Select up to three kinds of incidents to plot versus time."),
+                 p("Select up to three kinds of incidents to plot versus time.", 
+                   actionLink("modal_incidents", label = NULL, icon=icon("info-circle"))),
                  splitLayout(
                    selectInput("select_incidentgroup1", label = NULL, choices = group_choices,
                                selected = "All", multiple=FALSE),
@@ -168,6 +188,10 @@ server <- function(input, output) {
       input$select_incidentgroup3)
   })
   
+  observeEvent(input$modal_incidents, {
+    showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  
   # Plot
   output$incidents_group_plot <- renderPlot({
     
@@ -195,10 +219,10 @@ server <- function(input, output) {
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size=18),
-            plot.margin = unit(c(3,1,3,1), "lines"),
-            legend.position = c(.5, -.17), legend.direction="horizontal",
+            plot.margin = unit(c(3,1,4,1), "lines"),
+            legend.position = c(.5, -.22), legend.direction="horizontal",
             legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
-            legend.key.width = unit(1, "cm")) +
+            legend.key.width = unit(1, "cm"), legend.text = element_text(size=12)) +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
       scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
