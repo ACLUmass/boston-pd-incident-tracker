@@ -74,11 +74,10 @@ get_all_incident_data <- function() {
     saveRDS(query_log_filename)
   
   # Update log to reflect if there are new data
-  if (n > n_last_incidents) {
-    print("New data found. Updating new data log")
-    line = paste(now('America/New_York'), n, "lines")
-    write(line, file = new_data_log_filename, append=TRUE)
-  }
+  print("Updating data length log")
+  line = paste(now('America/New_York'), nrow(df_all), "lines")
+  write(line, file = new_data_log_filename, append=TRUE)
+  
 }
 
 get_all_incident_data()
