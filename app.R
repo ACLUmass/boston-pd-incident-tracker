@@ -11,11 +11,13 @@ theme_set(theme_minimal())
 
 # Load violation classifications
 violations <- read_csv("data/violations_major_minor.csv")
+group_choices <- c("--", "All", violations %>% pull(incident_group) %>% unique() %>% sort())
+group_choices <- c(group_choices[group_choices != "Other"], "Other")
 
 # Load all incidents
 df_all <- read_rds("data/all_bpd_incidents.rds") %>%
   mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
-  merge(violations %>% select(CODE, Lauren_says_minor), 
+  merge(violations, 
         by.x="OFFENSE_CODE", by.y="CODE")
 
 # Load time of last query
@@ -44,37 +46,44 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   # App title ----
   titlePanel("Boston Police Incidents : Coronavirus Tracker"),
   
-  # Sidebar layout with input and output definitions ----
-  sidebarLayout(
+  div(
+    navlistPanel(widths = c(3, 9),
+      tabPanel("About", 
+               h4("Explore Boston PD Incidents"),
+               p(paste("View plots in the different tabs to track the behavior of the",
+                       "Boston Police Department after Governor Baker's",
+                       "declaration of a State of Emergency on March 10, 2020.")),
+               
+               h4("Data Source"),
+               HTML(paste("We sourced these police incident reports from",
+                          "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
+                          "The data posted there goes back to June 2015, and is updated daily."))
+               ),
+      tabPanel("Year-to-Year Comparison", 
+               withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
+      tabPanel("Incidents by Type",
+               wellPanel(
+                 p("Select up to three kinds of incidents to plot versus time."),
+                 splitLayout(
+                   selectInput("select_incidentgroup1", label = NULL, choices = group_choices,
+                               selected = "All", multiple=FALSE),
+                   selectInput("select_incidentgroup2", label = NULL, choices = group_choices,
+                               selected = "Motor Vehicle", multiple=FALSE),
+                   selectInput("select_incidentgroup3", label = NULL, choices = group_choices,
+                               selected = "Investigations", multiple=FALSE)
+                 )),
+               withSpinner(plotOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
+               ),
+      tabPanel("Major & Minor Incidents Comparison", 
+               withSpinner(plotOutput("major_minor_plot"), type=4, color="#b5b5b5", size=0.5)),
+      tabPanel("Incidents Over Time", 
+               withSpinner(plotOutput("incidents_v_time_plot"), type=4, color="#b5b5b5", size=0.5))
+      ),
     
-    # Sidebar panel for inputs ----
-    sidebarPanel(
-      
-      h4("Explore Boston PD Incidents"),
-      p(paste("View plots in the different tabs to track the behavior of the",
-              "Boston Police Department after Governor Baker's",
-              "declaration of a State of Emergency on March 10, 2020.")),
-      
-      h4("Data Source"),
-      HTML(paste("We sourced these police incident reports from",
-                 "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
-                 "The data posted there goes back to June 2015, and is updated daily."))
+    em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
     ),
-    
-    # Main panel for displaying outputs ----
-    mainPanel(align="center",
-              tabsetPanel(
-                tabPanel("Year-to-Year Comparison", 
-                         withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
-                tabPanel("Major & Minor Incidents Comparison", 
-                         withSpinner(plotOutput("major_minor_plot"), type=4, color="#b5b5b5", size=0.5)),
-                tabPanel("Incidents Over Time", 
-                         withSpinner(plotOutput("incidents_v_time_plot"), type=4, color="#b5b5b5", size=0.5))
-                ),
-              em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
-    )
-  ),
   
+  br(),
   hr(),
   img(src="OneLineLogo_RGB_Massachusetts.png", width="300px", 
       style="opacity: 0.5; display: block; margin-left: auto; margin-right: auto;"),
@@ -94,8 +103,6 @@ server <- function(input, output) {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   output$year_to_year_plot <- renderPlot({
-    # if (is.null(addressesDF()))
-    #   return(ward_plot)
     
     first_date_to_plot <- last_date_to_plot - months(2)
     
@@ -151,11 +158,62 @@ server <- function(input, output) {
   })
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Incidents by Group v. Time
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Determine which incidents to plot
+  inc_grps_to_plot <- reactive({
+    c(input$select_incidentgroup1, 
+      input$select_incidentgroup2,
+      input$select_incidentgroup3)
+  })
+  
+  # Plot
+  output$incidents_group_plot <- renderPlot({
+    
+    all_df_all <- df_all %>%
+      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+      group_by(date = date(OCCURRED_ON_DATE)) %>%
+      summarize(n = n()) %>%
+      mutate(incident_group = "All")
+    
+    df_by_incidentgroup <- df_all %>%
+      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+      group_by(date = date(OCCURRED_ON_DATE), incident_group) %>%
+      summarize(n = n()) %>%
+      ungroup() %>%
+      rbind(all_df_all)
+    
+    df_by_incidentgroup %>%
+      filter(incident_group %in% inc_grps_to_plot()) %>%
+    ggplot(aes(x=date, y = n, alpha = date >= ymd(20200310), 
+               color=incident_group)) +
+      geom_vline(aes(xintercept=ymd(20200310)), 
+                 linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
+      geom_path(aes(group=incident_group), 
+                size=1.3, show.legend = T) +
+      labs(x = "", y = "Number of Incidents", color="") +
+      theme(plot.title= element_text(family="GT America", face='bold'),
+            text = element_text(family="GT America", size=18),
+            plot.margin = unit(c(3,1,3,1), "lines"),
+            legend.position = c(.5, -.17), legend.direction="horizontal",
+            legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
+            legend.key.width = unit(1, "cm")) +
+      scale_x_date(date_labels = "%b %e ", 
+                   limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
+      scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
+      scale_alpha_manual(values=c(0.3, 1), guide="none") +
+      annotate("text", x=ymd(20200310), y = Inf, hjust=0.5,
+               color="#fbb416", family="GT America", lineheight=0.9, size=5,
+               label = "State of Emergency\ndeclared in MA\n\n") +
+      coord_cartesian(clip = 'off')
+    
+  })
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Major & Minor Incidents v. Time
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   output$major_minor_plot <- renderPlot({
-    # if (is.null(addressesDF()))
-    #   return(ward_plot)
     
     last_date_value_major <- df_all %>%
       filter(date(OCCURRED_ON_DATE) == last_date_to_plot,
@@ -204,8 +262,6 @@ server <- function(input, output) {
   # Incidents v. Time
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   output$incidents_v_time_plot <- renderPlot({
-    # if (is.null(addressesDF()))
-    #   return(ward_plot)
     
     df_all %>%
       filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%

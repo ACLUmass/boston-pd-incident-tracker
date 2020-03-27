@@ -9,3 +9,4 @@ data/query_log.rds
 .git
 LICENSE
 README.md
+data/new_data_log.txt
