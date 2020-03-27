@@ -142,8 +142,8 @@ server <- function(input, output) {
             text = element_text(family="gtam", size=18),
             plot.margin = unit(c(1,3,1,1), "lines")) +
       scale_color_manual(values=c("black", "#fbb416")) +
-      annotate("text", x = ymd(20200310) - 3, y = 100, angle=90, hjust=0.5,
-               family="gtam", lineheight=0.9, size = 4, color="#fbb416", 
+      annotate("text", x = ymd(20200310) - 2.5, y = 100, angle=90, hjust=0.5,
+               family="gtam", size = 4, color="#fbb416", 
                label = "State of Emergency\ndeclared in MA") +
       annotate("text", x = last_date_to_plot, y = last_date_value_2020, hjust=-.2,
                family="gtam", size = 5, color="#fbb416", fontface="bold",
@@ -204,7 +204,7 @@ server <- function(input, output) {
       scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
       scale_alpha_manual(values=c(0.3, 1), guide="none") +
       annotate("text", x=ymd(20200310), y = Inf, hjust=0.5,
-               color="#fbb416", family="gtam", lineheight=0.9, size=5,
+               color="#fbb416", family="gtam", size=4,
                label = "State of Emergency\ndeclared in MA\n\n") +
       coord_cartesian(clip = 'off')
     
@@ -246,7 +246,7 @@ server <- function(input, output) {
       scale_color_manual(values=c("#ef404d", "#0055aa")) +
       scale_alpha_manual(values=c(0.3, 1)) +
       annotate("text", x=ymd(20200310)-2.5, y = 60, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", lineheight=0.9, size=4,
+               color="#fbb416", family="gtam", size=4,
                label = "State of Emergency\ndeclared in MA") +
       annotate("text", x = last_date_to_plot, y = last_date_value_major, hjust=-.1, vjust = 0.5,
                family="gtam", size = 5, color="#ef404d", fontface="bold",
@@ -277,8 +277,8 @@ server <- function(input, output) {
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size=18)) +
       scale_color_manual(values=c("black", "#fbb416")) +
-      annotate("text", x=ymd(20200310)-3, y = 100, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", lineheight=0.9, size=4,
+      annotate("text", x=ymd(20200310)-2.5, y = 100, angle=90, hjust=0.5,
+               color="#fbb416", family="gtam", size=4,
                label = "State of Emergency\ndeclared in MA") +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot))
