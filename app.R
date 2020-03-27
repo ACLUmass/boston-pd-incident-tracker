@@ -6,6 +6,8 @@ library(stringr)
 library(readr)
 library(shinycssloaders)
 library(showtext)
+library(leaflet)
+library(leafsync)
 
 theme_set(theme_minimal())
 
@@ -37,7 +39,7 @@ for (grp in group_choices[3:28]) {
 df_all <- read_rds("data/all_bpd_incidents.rds") %>%
   mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
   merge(violations, 
-        by="OFFENSE_CODE")
+        by="OFFENSE_CODE", all.x=T)
 
 # Load time of last query
 last_query_time <- read_rds("data/query_log.rds") %>%
@@ -48,9 +50,20 @@ last_query_time <- read_rds("data/query_log.rds") %>%
 
 last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE) - days(1))
 
+# Filter for mapping
+df_to_map <- df_all %>%
+  filter((OCCURRED_ON_DATE <= last_date_to_plot & OCCURRED_ON_DATE >= ymd(20200301)) | 
+           (OCCURRED_ON_DATE <= last_date_to_plot - years(1) & OCCURRED_ON_DATE >= ymd(20190301)),
+         !is.na(Long), ) %>%
+  mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
+         labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
+                             format="%A %B %e, %Y at %I:%M %p"), 
+                      desc, sep="<br/>")) %>%
+  filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
+
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(theme = "bpd_covid19_app.css",
-  
+
   # Add development warning and link to shinyapps.io page
   div(id="dev-warning",
     wellPanel(
@@ -67,6 +80,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   
   div(
     navlistPanel(widths = c(3, 9),
+                 
       tabPanel("About", 
                h4("Explore Boston PD Incidents"),
                p(paste("View plots in the different tabs to track the behavior of the",
@@ -78,8 +92,10 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                           "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
                           "The data posted there goes back to June 2015, and is updated daily."))
                ),
+      
       tabPanel("Year-to-Year Comparison", 
                withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
+      
       tabPanel("Incidents by Type",
                wellPanel(
                  p("Select up to three kinds of incidents to plot versus time.", 
@@ -94,10 +110,24 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  )),
                withSpinner(plotOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
+      
+      tabPanel("Incident Locations", 
+               splitLayout(align="center", h2("2019"), h2("2020")),
+               p(align="center", paste0("Showing incident locations between March 10 and ", 
+                                       format(last_date_to_plot, format="%B %e.\n")), br(),
+                 em("Please note that only approximately 90% of all police incident reports include location coordinates.\n",
+                    style="font-size:11px;")),
+               withSpinner(uiOutput("synced_maps"), 
+                           type=4, color="#b5b5b5", size=0.5)
+               ),
+      
       tabPanel("Major & Minor Incidents Comparison", 
-               withSpinner(plotOutput("major_minor_plot"), type=4, color="#b5b5b5", size=0.5)),
+               withSpinner(plotOutput("major_minor_plot"), 
+                           type=4, color="#b5b5b5", size=0.5)),
+      
       tabPanel("Incidents Over Time", 
-               withSpinner(plotOutput("incidents_v_time_plot"), type=4, color="#b5b5b5", size=0.5))
+               withSpinner(plotOutput("incidents_v_time_plot"), 
+                           type=4, color="#b5b5b5", size=0.5))
       ),
     
     em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
@@ -119,7 +149,7 @@ server <- function(input, output) {
   showtext_auto()
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 2019 v. 2020
+  # 🗓 2019 v. 2020 🗓 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   output$year_to_year_plot <- renderPlot({
@@ -178,7 +208,7 @@ server <- function(input, output) {
   })
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Incidents by Group v. Time
+  # 🕰 Incidents by Group v. Time 🕰
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Determine which incidents to plot
@@ -188,6 +218,7 @@ server <- function(input, output) {
       input$select_incidentgroup3)
   })
   
+  # Connect modal to incident info link
   observeEvent(input$modal_incidents, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
   })
@@ -235,7 +266,46 @@ server <- function(input, output) {
   })
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Major & Minor Incidents v. Time
+  # 🌍 Incidents by Location 🌍
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Plot map
+  output$synced_maps <- renderUI({
+    
+    map_2019 <- leaflet(df_to_map %>%filter(YEAR==2019), 
+                  options = leafletOptions(attributionControl = T)) %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
+      addCircleMarkers(lng = ~Long, lat = ~Lat,
+                       label = lapply(df_to_map %>%filter(YEAR==2019) %>%pull(labs), HTML),
+                       stroke=F, fillOpacity=.2, radius=2.5,
+                       color="#0055aa", group="circle_marks") %>%
+      addEasyButton(easyButton(
+        icon="fa-home", title="Reset",
+        onClick=JS("function(btn, map){ 
+                   var groupLayer = map.layerManager.getLayerGroup('circle_marks');
+                   map.fitBounds(groupLayer.getBounds());
+               }")))
+    
+    map_2020 <- leaflet(df_to_map %>%filter(YEAR==2020), 
+                  options = leafletOptions(attributionControl = T)) %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
+      addCircleMarkers(lng = ~Long, lat = ~Lat, 
+                       label = lapply(df_to_map %>%filter(YEAR==2020) %>%pull(labs), HTML),
+                       stroke=F, fillOpacity=.2, radius=2.5,
+                       color="#0055aa", group="circle_marks") %>%
+      addEasyButton(easyButton(
+        icon="fa-home", title="Reset",
+        onClick=JS("function(btn, map){ 
+                   var groupLayer = map.layerManager.getLayerGroup('circle_marks');
+                   map.fitBounds(groupLayer.getBounds());
+               }")))
+    
+    sync(map_2019, map_2020)
+    
+  })
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # 🙅🏽 Major & Minor Incidents v. Time 🤷🏽
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   output$major_minor_plot <- renderPlot({
     
@@ -283,7 +353,7 @@ server <- function(input, output) {
   })
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Incidents v. Time
+  # 📉 Incidents v. Time 📉
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   output$incidents_v_time_plot <- renderPlot({
     
