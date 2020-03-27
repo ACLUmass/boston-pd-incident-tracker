@@ -78,8 +78,20 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                           "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
                           "The data posted there goes back to June 2015, and is updated daily."))
                ),
+      
+      # tabPanel("Year-to-Year Comparison", 
+      #          withSpinner(
+      #            plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
+      
       tabPanel("Year-to-Year Comparison", 
-               withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
+                 div(
+                   style = "position:relative",
+                   withSpinner(plotOutput("year_to_year_plot", 
+                              hover = hoverOpts("plot_hover", delay = 100, delayType = "debounce")),
+                              type=4, color="#b5b5b5", size=0.5),
+                   uiOutput("hover_info")
+                 )),
+      
       tabPanel("Incidents by Type",
                wellPanel(
                  p("Select up to three kinds of incidents to plot versus time.", 
@@ -94,10 +106,13 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  )),
                withSpinner(plotOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
+      
       tabPanel("Major & Minor Incidents Comparison", 
                withSpinner(plotOutput("major_minor_plot"), type=4, color="#b5b5b5", size=0.5)),
+      
       tabPanel("Incidents Over Time", 
                withSpinner(plotOutput("incidents_v_time_plot"), type=4, color="#b5b5b5", size=0.5))
+      
       ),
     
     em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
@@ -122,33 +137,61 @@ server <- function(input, output) {
   # 2019 v. 2020
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
+  first_date_to_plot <- last_date_to_plot - months(2)
+  
+  df_last_year <- df_all %>%
+    mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
+             str_replace("^\\d{4}","2020") %>% as_date) %>%
+    filter(YEAR == '2019', 
+           date_to_plot <= last_date_to_plot, 
+           date_to_plot >= first_date_to_plot) %>%
+    group_by(date_to_plot) %>%
+    summarize(n = n())
+  
+  last_date_value_2020 <- df_all %>%
+    filter(date(OCCURRED_ON_DATE) == last_date_to_plot) %>%
+    count() %>%
+    pull()
+  
+  last_date_value_2019 <- df_last_year %>%
+    filter(date(date_to_plot) == last_date_to_plot) %>%
+    pull(n)
+  
+  df_2019_v_2020 <- df_all %>%
+    filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+    mutate(date_to_plot = date(OCCURRED_ON_DATE)) %>%
+    group_by(date_to_plot) %>%
+    summarize(n = n())
+  
   output$year_to_year_plot <- renderPlot({
     
-    first_date_to_plot <- last_date_to_plot - months(2)
+    # first_date_to_plot <- last_date_to_plot - months(2)
+    # 
+    # df_last_year <- df_all %>%
+    #   mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
+    #            str_replace("^\\d{4}","2020") %>% as_date) %>%
+    #   filter(YEAR == '2019', 
+    #          date_to_plot <= last_date_to_plot, 
+    #          date_to_plot >= first_date_to_plot) %>%
+    #   group_by(date_to_plot) %>%
+    #   summarize(n = n())
+    # 
+    # last_date_value_2020 <- df_all %>%
+    #   filter(date(OCCURRED_ON_DATE) == last_date_to_plot) %>%
+    #   count() %>%
+    #   pull()
+    # 
+    # last_date_value_2019 <- df_last_year %>%
+    #   filter(date(date_to_plot) == last_date_to_plot) %>%
+    #   pull(n)
+    # 
+    # df_2019_v_2020 <- df_all %>%
+    #   filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+    #   mutate(date_to_plot = date(OCCURRED_ON_DATE)) %>%
+    #   group_by(date_to_plot) %>%
+    #   summarize(n = n())
     
-    df_last_year <- df_all %>%
-      mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
-               str_replace("^\\d{4}","2020") %>% as_date) %>%
-      filter(YEAR == '2019', 
-             date_to_plot <= last_date_to_plot, 
-             date_to_plot >= first_date_to_plot) %>%
-      group_by(date_to_plot) %>%
-      summarize(n = n())
-    
-    last_date_value_2020 <- df_all %>%
-      filter(date(OCCURRED_ON_DATE) == last_date_to_plot) %>%
-      count() %>%
-      pull()
-    
-    last_date_value_2019 <- df_last_year %>%
-      filter(date(date_to_plot) == last_date_to_plot) %>%
-      pull(n)
-    
-    df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
-      mutate(date_to_plot = date(OCCURRED_ON_DATE)) %>%
-      group_by(date_to_plot) %>%
-      summarize(n = n()) %>%
+    df_2019_v_2020 %>%
     ggplot(aes(x = date_to_plot, y = n)) +
       geom_vline(aes(xintercept = ymd(20200310)),
                  linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
@@ -176,6 +219,55 @@ server <- function(input, output) {
       coord_cartesian(clip = 'off')
     
   })
+  
+  output$hover_info <- renderUI({
+    hover <- input$plot_hover
+    point_2020 <- nearPoints(df_2019_v_2020, 
+                             hover, threshold = 10, maxpoints = 1, addDist = T)
+    point_2019 <- nearPoints(df_last_year, 
+                             hover, threshold = 10, maxpoints = 1, addDist = T)
+
+    point <- point_2020
+    is_2019 <- F
+    if (nrow(point_2020) == 0) {
+      point <- point_2019
+      is_2019 <- T
+      if (nrow(point_2019) == 0) {
+        point <- NULL
+      return(NULL)
+      }
+    }
+      
+    print(point)
+    print(point$date_to_plot)
+    
+    # calculate point position INSIDE the image as percent of total dimensions
+    # from left (horizontal) and from top (vertical)
+    left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+    top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+    
+    # calculate distance from left and bottom side of the picture in pixels
+    left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+    top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+    
+    # create style property for tooltip
+    # background color is set so tooltip is a bit transparent
+    # z-index is set so we are sure are tooltip will be on top
+    style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+                    "left:", left_px + 2, "px; top:", top_px + 2, "px;")
+    
+    date <- if_else(is_2019, 
+                    paste0("2019", str_sub(point$date_to_plot, 5, 10)), 
+                    as.character(point$date_to_plot))
+    
+    # actual tooltip created as wellPanel
+    wellPanel(
+      style = style,
+      p(HTML(paste0("<b> Date: </b>", date, "<br/>",
+                    "<b> Number of Incidents: </b>", point$n, "<br/>")))
+    )
+  })
+  
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Incidents by Group v. Time
