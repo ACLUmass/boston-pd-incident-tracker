@@ -1,3 +1,8 @@
+# Data
+data/all_bpd_incidents.rds
+data/new_data_log.txt
+data/query_log.rds
+
 # OS files
 .DS_Store
 .uuid
