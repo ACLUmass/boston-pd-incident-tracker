@@ -54,9 +54,11 @@ get_all_incident_data <- function() {
     }
   }
   
+  n_new <- nrow(df_all)
+  
   # Make sure the number of incidents is either the same or greater than
   # the number upon the last query, or don't rewrite the DB
-  if (n < n_last_incidents) {
+  if (n_new < n_last_incidents) {
     stop('Incidents have been removed?')
   }
   
@@ -75,7 +77,7 @@ get_all_incident_data <- function() {
   
   # Update log to reflect if there are new data
   print("Updating data length log")
-  line = paste(now('America/New_York'), nrow(df_all), "lines")
+  line = paste(now('America/New_York'), n_new, "lines")
   write(line, file = new_data_log_filename, append=TRUE)
   
 }
