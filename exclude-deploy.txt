@@ -4,3 +4,8 @@ dev
 data/all_bpd_incidents.rds
 data/query_log.rds
 .DS_Store
+.github
+.gitignore
+.git
+LICENSE
+README.md
