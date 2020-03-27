@@ -15,6 +15,7 @@ get_all_incident_data <- function() {
   
   db_filename <- "all_bpd_incidents.rds"
   query_log_filename <- "query_log.rds"
+  new_data_log_filename <- "new_data_log.txt"
   
   # Check how many incidents were present after the last query
   n_last_incidents <- readRDS(db_filename) %>%
@@ -71,6 +72,13 @@ get_all_incident_data <- function() {
   query_history <- readRDS(query_log_filename) %>%
     rbind(data.frame(query_time=now('America/New_York'))) %>%
     saveRDS(query_log_filename)
+  
+  # Update log to reflect if there are new data
+  if (n > n_last_incidents) {
+    print("New data found. Updating new data log")
+    line = paste(now('America/New_York'), n, "lines")
+    write(line, file = new_data_log_filename, append=TRUE)
+  }
 }
 
 get_all_incident_data()
