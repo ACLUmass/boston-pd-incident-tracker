@@ -11,7 +11,7 @@ library(leafsync)
 
 theme_set(theme_minimal())
 MA_label_fontsize = 5
-axis_label_fontsize  = 19
+axis_label_fontsize = 30
 year_label_fontsize = 6
 
 # Load violation classifications
