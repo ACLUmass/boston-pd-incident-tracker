@@ -10,6 +10,9 @@ library(leaflet)
 library(leafsync)
 
 theme_set(theme_minimal())
+MA_label_fontsize = 5
+axis_label_fontsize  = 19
+year_label_fontsize = 6
 
 # Load violation classifications
 violations <- read_csv("data/violations_major_minor.csv")
@@ -189,17 +192,17 @@ server <- function(input, output) {
       ylim(0, 350) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size=18),
+            text = element_text(family="gtam", size = axis_label_fontsize),
             plot.margin = unit(c(1,3,1,1), "lines")) +
       scale_color_manual(values=c("black", "#fbb416")) +
       annotate("text", x = ymd(20200310) - 2.5, y = 100, angle=90, hjust=0.5,
-               family="gtam", size = 4, color="#fbb416", 
+               family="gtam", size = MA_label_fontsize, color="#fbb416", 
                label = "State of Emergency\ndeclared in MA") +
       annotate("text", x = last_date_to_plot, y = last_date_value_2020, hjust=-.2,
-               family="gtam", size = 5, color="#fbb416", fontface="bold",
+               family="gtam", size = year_label_fontsize, color="#fbb416", fontface="bold",
                label = "2020") +
       annotate("text", x = last_date_to_plot, y = last_date_value_2019, hjust=-.2,
-               family="gtam", size = 5, alpha=0.5, fontface="bold",
+               family="gtam", size = year_label_fontsize, alpha=0.5, fontface="bold",
                label = "2019") +
       scale_x_date(date_labels = "%b %e ",
                    limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
@@ -249,7 +252,7 @@ server <- function(input, output) {
                 size=1.3, show.legend = T) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size=18),
+            text = element_text(family="gtam", size = axis_label_fontsize),
             plot.margin = unit(c(3,1,4,1), "lines"),
             legend.position = c(.5, -.22), legend.direction="horizontal",
             legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
@@ -259,7 +262,7 @@ server <- function(input, output) {
       scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
       scale_alpha_manual(values=c(0.3, 1), guide="none") +
       annotate("text", x=ymd(20200310), y = Inf, hjust=0.5,
-               color="#fbb416", family="gtam", size=4,
+               color="#fbb416", family="gtam", size = MA_label_fontsize,
                label = "State of Emergency\ndeclared in MA\n\n") +
       coord_cartesian(clip = 'off')
     
@@ -333,20 +336,20 @@ server <- function(input, output) {
       ylim(0, 200) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size=18),
+            text = element_text(family="gtam", size = axis_label_fontsize),
             plot.margin = unit(c(1,5,1,1), "lines")) +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
       scale_color_manual(values=c("#ef404d", "#0055aa")) +
       scale_alpha_manual(values=c(0.3, 1)) +
       annotate("text", x=ymd(20200310)-2.5, y = 60, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", size=4,
+               color="#fbb416", family="gtam", size = MA_label_fontsize,
                label = "State of Emergency\ndeclared in MA") +
       annotate("text", x = last_date_to_plot, y = last_date_value_major, hjust=-.1, vjust = 0.5,
-               family="gtam", size = 5, color="#ef404d", fontface="bold",
+               family="gtam", size = year_label_fontsize, color="#ef404d", fontface="bold",
                label = "Major\nincidents") +
       annotate("text", x = last_date_to_plot, y = last_date_value_minor, hjust=-.1, vjust = -0.5,
-               family="gtam", size = 5, fontface="bold", color="#0055aa",
+               family="gtam", size = year_label_fontsize, fontface="bold", color="#0055aa",
                label = "Minor\nincidents") +
       coord_cartesian(clip = 'off')
     
@@ -369,10 +372,10 @@ server <- function(input, output) {
       ylim(0, 350) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size=18)) +
+            text = element_text(family="gtam", size = axis_label_fontsize)) +
       scale_color_manual(values=c("black", "#fbb416")) +
       annotate("text", x=ymd(20200310)-2.5, y = 100, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", size=4,
+               color="#fbb416", family="gtam", size = MA_label_fontsize,
                label = "State of Emergency\ndeclared in MA") +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot))
