@@ -54,7 +54,7 @@ last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE) - days(1))
 df_to_map <- df_all %>%
   filter((OCCURRED_ON_DATE <= last_date_to_plot & OCCURRED_ON_DATE >= ymd(20200301)) | 
            (OCCURRED_ON_DATE <= last_date_to_plot - years(1) & OCCURRED_ON_DATE >= ymd(20190301)),
-         !is.na(Long), ) %>%
+         !is.na(Long)) %>%
   mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
          labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
                              format="%A %B %e, %Y at %I:%M %p"), 
