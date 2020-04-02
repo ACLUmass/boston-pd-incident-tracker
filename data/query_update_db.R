@@ -235,3 +235,6 @@ if (!interactive()) {
   saveRDS(df_all_combined, db_filename)
   print(paste("Saved updated database to", db_filename))
 }
+
+# Report out memory usage
+print(gc())

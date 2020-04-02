@@ -9,14 +9,20 @@ library(showtext)
 library(leaflet)
 library(leafsync)
 
+# Set ggplot settings
 theme_set(theme_minimal())
 MA_label_fontsize = 8 #4
 axis_label_fontsize = 30 #18
 legend_label_fontsize = 20 #12
 year_label_fontsize = 9 #5
 
+# Define filenames and column data types
+db_filename <- "data/all_bpd_incidents_cumulative.rds"
+query_log_filename <- "data/query_log.rds"
+violations_filename <- "data/violations_major_minor.csv"
+
 # Load violation classifications
-violations <- read_csv("data/violations_major_minor.csv")
+violations <- read_csv(violations_filename)
 group_choices <- c("--", "All", violations %>% pull(incident_group) %>% unique() %>% sort())
 group_choices <- c(group_choices[group_choices != "Other"], "Other")
 
@@ -40,13 +46,13 @@ for (grp in group_choices[3:28]) {
 }
 
 # Load all incidents
-df_all <- read_rds("data/all_bpd_incidents.rds") %>%
+df_all <- read_rds(db_filename) %>%
   mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
   merge(violations, 
         by="OFFENSE_CODE", all.x=T)
 
 # Load time of last query
-last_query_time <- read_rds("data/query_log.rds") %>%
+last_query_time <- read_rds(query_log_filename) %>%
   tail(1) %>%
   pull(query_time) %>%
   with_tz(tzone="America/New_York") %>%
