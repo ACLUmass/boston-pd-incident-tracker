@@ -12,12 +12,9 @@ library(jsonlite)
 library(readr)
 
 # Define filenames and column data types
-# db_filename <- "all_bpd_incidents_cumulative.rds"
-# query_log_filename <- "query_log.rds"
-# new_data_log_filename <- "new_data_log.txt"
-db_filename <- "~/covid19/app/data/all_bpd_incidents_cumulative.rds"
-query_log_filename <- "~/covid19/app/data/query_log.rds"
-new_data_log_filename <- "~/covid19/app/data/new_data_log.txt"
+db_filename <- "all_bpd_incidents_cumulative.rds"
+query_log_filename <- "query_log.rds"
+new_data_log_filename <- "new_data_log.txt"
 
 parse_query_db <- cols(
   STREET = col_character(),
