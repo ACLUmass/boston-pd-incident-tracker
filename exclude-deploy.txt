@@ -10,3 +10,5 @@ data/query_log.rds
 LICENSE
 README.md
 data/new_data_log.txt
+data/all_bpd_incidents_cumulative.rds
+data/testing

@@ -1,7 +1,8 @@
 # Data
-data/all_bpd_incidents.rds
+data/*.rds
 data/new_data_log.txt
-data/query_log.rds
+data/testing
+dev
 
 # OS files
 .DS_Store
