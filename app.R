@@ -10,9 +10,10 @@ library(leaflet)
 library(leafsync)
 
 theme_set(theme_minimal())
-MA_label_fontsize = 8
-axis_label_fontsize = 30
-year_label_fontsize = 9
+MA_label_fontsize = 8 #4
+axis_label_fontsize = 30 #18
+legend_label_fontsize = 20 #12
+year_label_fontsize = 9 #5
 
 # Load violation classifications
 violations <- read_csv("data/violations_major_minor.csv")
@@ -256,7 +257,8 @@ server <- function(input, output) {
             plot.margin = unit(c(3,1,4,1), "lines"),
             legend.position = c(.5, -.22), legend.direction="horizontal",
             legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
-            legend.key.width = unit(1, "cm"), legend.text = element_text(size=12)) +
+            legend.key.width = unit(1, "cm"), 
+            legend.text = element_text(size=legend_label_fontsize)) +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
       scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
