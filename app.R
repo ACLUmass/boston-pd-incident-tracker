@@ -82,7 +82,11 @@ df_to_map <- df_all %>%
 # Calculate percentage of incidents with locaation
 percent_w_loc <- round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1)
 
-# Define UI for app that draws a histogram ----
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# UI
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ui <- fluidPage(theme = "bpd_covid19_app.css",
 
   # Add development warning and link to shinyapps.io page
@@ -185,8 +189,12 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   p("Please contact lchambers@aclum.org with questions.", align="center", style="opacity: 0.6;")
 )
 
-# Define server logic required to draw a histogram ----
-server <- function(input, output) {
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Server
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+server <- function(input, output, session) {
 
   # Load ggplot-friendly font using show_text
   font_add("gtam", "GT-America-Standard-Regular.ttf",
