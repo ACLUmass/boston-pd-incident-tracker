@@ -22,7 +22,13 @@ query_log_filename <- "data/query_log.rds"
 violations_filename <- "data/violations_major_minor.csv"
 
 # Load violation classifications
-violations <- read_csv(violations_filename)
+violations <- read_csv(violations_filename, 
+                       col_types = cols(
+                         OFFENSE_CODE = col_double(),
+                         Lauren_says_minor = col_logical(),
+                         incident_group = col_character(),
+                         desc = col_character()
+                       ))
 group_choices <- c("--", "All", violations %>% pull(incident_group) %>% unique() %>% sort())
 group_choices <- c(group_choices[group_choices != "Other"], "Other")
 
@@ -58,7 +64,7 @@ last_query_time <- read_rds(query_log_filename) %>%
   with_tz(tzone="America/New_York") %>%
   format(format="%A %B %e, %Y at %I:%M %p %Z")
 
-last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE) - days(1))
+last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
 
 # Filter for mapping
 df_to_map <- df_all %>%
