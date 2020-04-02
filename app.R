@@ -56,6 +56,7 @@ df_all <- read_rds(db_filename) %>%
   mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
   merge(violations, 
         by="OFFENSE_CODE", all.x=T)
+n_incidents <- df_all %>% nrow()
 
 # Load time of last query
 last_query_time <- read_rds(query_log_filename) %>%
@@ -76,6 +77,9 @@ df_to_map <- df_all %>%
                              format="%A %B %e, %Y at %I:%M %p"), 
                       desc, sep="<br/>")) %>%
   filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
+
+# Calculate percentage of incidents with locaation
+percent_w_loc <- round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1)
 
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(theme = "bpd_covid19_app.css",
@@ -131,7 +135,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                splitLayout(align="center", h2("2019"), h2("2020")),
                p(align="center", paste0("Showing incident locations between March 10 and ", 
                                        format(last_date_to_plot, format="%B %e.\n")), br(),
-                 em("Please note that only approximately 90% of all police incident reports include location coordinates.\n",
+                 em(paste0("Please note that only ", percent_w_loc, "% of all police incident reports include location coordinates.\n"),
                     style="font-size:11px;")),
                withSpinner(uiOutput("synced_maps"), 
                            type=4, color="#b5b5b5", size=0.5)
