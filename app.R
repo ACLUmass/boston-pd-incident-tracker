@@ -176,7 +176,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                p("Our curated database is available for download here:"),
                downloadButton("downloadData", "Download CSV"),
                br(), br(),
-               em("The download might take a few seconds to begin."))
+               em("The download might take a few seconds."))
       ),
     
     em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
@@ -453,7 +453,9 @@ server <- function(input, output, session) {
       paste0(timestamp, "_all_bpd_incidents.csv")
     },
     content = function(file) {
-      write.csv(df_all, file)
+      withProgress(message = 'Downloading...', value = 1, {
+        write.csv(df_all, file)
+      })
     }
   )
   
