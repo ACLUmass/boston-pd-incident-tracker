@@ -100,7 +100,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   titlePanel("Boston Police Incidents : Coronavirus Tracker"),
   
   div(
-    navlistPanel(widths = c(3, 9),
+    navlistPanel(widths = c(3, 9), id="panels",
                  
       tabPanel("About", 
                h4("Explore Boston PD Incidents"),
@@ -108,10 +108,16 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                        "Boston Police Department after Governor Baker's",
                        "declaration of a State of Emergency on March 10, 2020.")),
                
-               h4("Data Source"),
+               h4("About the Data"),
                HTML(paste("We sourced these police incident reports from",
                           "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
-                          "The data posted there goes back to June 2015, and is updated daily."))
+                          "The reports posted there go back to June 2015, and are (usually) updated daily.")),
+               p("The data sourced for all visualizations on this site are available for download",
+                 actionLink("link_to_download", "here."), style="margin-top: 1rem;"),
+               
+               h4("Source Code"),
+               p("Interested programmers can view the source code for this app, written in R, on", 
+                 a("GitHub.", href="https://github.com/ACLUmass/bpd-covid-19-tracker"))
                ),
       
       tabPanel("Year-to-Year Comparison", 
@@ -148,7 +154,25 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Incidents Over Time", 
                withSpinner(plotOutput("incidents_v_time_plot"), 
-                           type=4, color="#b5b5b5", size=0.5))
+                           type=4, color="#b5b5b5", size=0.5)),
+      
+      tabPanel("Download Data", 
+               p(paste("In order to insulate our data visualizations from",
+                       "inconsistencies in the AnalyzeBoston database, we",
+                       "maintain our own database of all Boston Police",
+                       "incidents since 2015. This database is updated daily,",
+                       "adding new incidents and at times updating old incidents if",
+                       "BPD provided updated location data for that incident", 
+                       "since the previous query. The ACLUM database differs",
+                       "from the BPD database in context, not content - that is",
+                       "to say, we do not alter incident details or metadata except to",
+                       "compile entries cumulatively. This accumulated database",
+                       "is the source of all visualizations on this site.")),
+               p(strong("Current database size: "), n_incidents, "incidents"),
+               p("Our curated database is available for download here:"),
+               downloadButton("downloadData", "Download CSV"),
+               br(), br(),
+               em("The download might take a few seconds to begin."))
       ),
     
     em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
@@ -404,6 +428,26 @@ server <- function(input, output) {
                    limits = c(last_date_to_plot - months(2), last_date_to_plot))
     
   })
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # ⬇️ Download CSV ⬇️
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  observeEvent(input$link_to_download, {
+    updateTabsetPanel(session, "panels", "Download Data")
+  })
+  
+  output$downloadData <- downloadHandler(
+    
+    filename = function() {
+      timestamp <- parse_date_time(str_replace(last_query_time, "\\s[^ ]+$", ""), 
+                                   "%A %B %e, %Y at %I:%M %p", exact=T, tz="America/New_York") %>%
+        format(format = "%Y%m%d_%H%M")
+      paste0(timestamp, "_all_bpd_incidents.csv")
+    },
+    content = function(file) {
+      write.csv(df_all, file)
+    }
+  )
   
 }
 
