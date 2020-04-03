@@ -11,11 +11,11 @@ library(leafsync)
 
 # Set ggplot settings
 theme_set(theme_minimal())
-MA_label_fontsize = 8 #4
-MA_label_lineheight = 0.8 #1
-axis_label_fontsize = 30 #18
-legend_label_fontsize = 20 #12
-year_label_fontsize = 9 #5
+MA_label_fontsize = 5 #4 / 8
+MA_label_lineheight = 1 #1 / 0.8
+axis_label_fontsize = 18 #18 / 30
+legend_label_fontsize = 12 #12 / 20
+year_label_fontsize = 5 #5 / 9
 
 # Define filenames and column data types
 db_filename <- "data/all_bpd_incidents_cumulative.rds"
