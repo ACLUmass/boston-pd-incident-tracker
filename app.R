@@ -10,11 +10,11 @@ library(leaflet)
 library(leafsync)
 
 theme_set(theme_minimal())
-MA_label_fontsize = 8 #4
-MA_label_lineheight = 0.8 #1
-axis_label_fontsize = 30 #18
-legend_label_fontsize = 20 #12
-year_label_fontsize = 9 #5
+MA_label_fontsize = 5 #4 / 8
+MA_label_lineheight = 1 #1 / 0.8
+axis_label_fontsize = 18 #18 / 30
+legend_label_fontsize = 12 #12 / 20
+year_label_fontsize = 5 #5 / 9
 
 # Load violation classifications
 violations <- read_csv("data/violations_major_minor.csv")
