@@ -128,7 +128,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       tabPanel("Year-to-Year Comparison", 
                withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
-      tabPanel("Incidents by Type",
+      tabPanel("Incidents by Type Over Time",
                wellPanel(id="internal_well",
                  p("Select up to three kinds of incidents to plot versus time.", 
                    actionLink("modal_incidents", label = NULL, icon=icon("info-circle"))),
@@ -163,10 +163,6 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Major & Minor Incidents Comparison", 
                withSpinner(plotOutput("major_minor_plot"), 
-                           type=4, color="#b5b5b5", size=0.5)),
-      
-      tabPanel("Incidents Over Time", 
-               withSpinner(plotOutput("incidents_v_time_plot"), 
                            type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Download Data", 
@@ -492,34 +488,6 @@ server <- function(input, output, session) {
                family="gtam", size = year_label_fontsize, fontface="bold", color="#0055aa",
                label = "Minor\nincidents") +
       coord_cartesian(clip = 'off')
-    
-  })
-  
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 📉 Incidents v. Time 📉
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  output$incidents_v_time_plot <- renderPlot({
-    
-    df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
-      group_by(date = date(OCCURRED_ON_DATE)) %>%
-      summarize(n = n()) %>%
-    ggplot(aes(x=date, y = n, color = date >= ymd(20200310))) +
-      geom_vline(aes(xintercept=ymd(20200310)), 
-                 linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
-      geom_path(aes(group = 1), size=1.3, show.legend = FALSE) +
-      geom_point(size=.6, show.legend = FALSE) +
-      ylim(0, 350) +
-      labs(x = "", y = "Daily Number of Incidents", color="") +
-      theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size = axis_label_fontsize)) +
-      scale_color_manual(values=c("black", "#fbb416")) +
-      annotate("text", x=ymd(20200310)-2.5, y = 100, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", size = MA_label_fontsize,
-               lineheight = MA_label_lineheight,
-               label = "State of Emergency\ndeclared in MA") +
-      scale_x_date(date_labels = "%b %e ", 
-                   limits = c(last_date_to_plot - months(2), last_date_to_plot))
     
   })
   
