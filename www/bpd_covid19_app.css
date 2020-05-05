@@ -31,7 +31,7 @@ Thank you: https://shiny.rstudio.com/articles/css.html
 /* GT America Bold */
 @font-face {
   font-family:'gtam';
-  src: url("fonts/gtamerica/gtamerica/GT-America-Standard-Bold.woff2") format('woff2');
+  src: url("fonts/gtamerica/GT-America-Standard-Bold.woff2") format('woff2');
   font-weight:600;
 }
 
@@ -50,11 +50,12 @@ h2 {
 }
 
 #dev-warning .well {
-  background-color: rgba(255, 212, 92, 0.3);
+  border-radius: 0px;
   margin-top: 2rem;
+  background-color: #fadf7c;
 }
 
-#dev-warning p {
+#dev-warning p, #dev-info p {
   display: inline;
 }
 
@@ -63,7 +64,113 @@ h2 {
   font-size: 20px;
 }
 
+#dev-warning h4, #dev-info h4 {
+  display: inline;
+  margin-left: 1rem;
+}
+
+#dev-warning em, #dev-info em {
+  display: block;
+  margin-top: 1rem;
+}
+
+#dev-info .well {
+  border-radius: 0px;
+  margin-top: 2rem;
+  background-color: #bbe9f0;
+}
+
+#dev-info i {
+  color: LightSeaGreen;
+  font-size: 20px;
+}
+
 /* Fix dropdown cutoff issue */
 .shiny-split-layout > div {
   overflow: visible;
+}
+
+/* Make sure table filters are wide enough */
+#df_table input {
+    width: 100px !important;
+}
+
+/* Update bar to match ACLUM website */
+.well.col-sm-3 {
+  background-color: #681b40;
+  border-radius: 0px;
+}
+
+.nav-pills>li.active>a, 
+.nav-pills>li.active>a:focus, 
+.nav-pills>li.active>a:hover {
+  background-color: #fadf7c;
+  color: #423a38;
+}
+
+.nav-pills>li>a {
+  color: white;
+  border-radius: 0px;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-family: gtamcond;
+}
+
+.nav>li>a:focus, 
+.nav>li>a:hover {
+  text-decoration: none;
+  background-color: #eee;
+  color: #423a38;
+}
+
+h1, h2, h3, h4 {
+  text-transform: uppercase;
+  font-weight: bold;
+  font-family: gtamcond;
+}
+
+a[data-value="About"],
+a[data-value="Incidents Over Time"]
+{
+  border-bottom: 1px solid #eee;
+}
+
+#county_maps {
+  margin-top: 2rem;
+}
+
+#internal_well {
+  border-radius: 0px;
+}
+
+#internal_well .form-group {
+  margin-bottom: -5px;
+}
+
+#internal_well .shiny-input-radiogroup {
+  margin-bottom: 2rem;
+}
+
+#internal_well #radio_prompt {
+  margin-bottom: 0px;
+}
+
+#internal_well .selectize-input {
+  border-radius: 0px;
+}
+
+#internal_well p {
+  font-weight: bold
+}
+
+#footer {
+  margin-top: 20px;
+}
+
+.nav-pills .navbar-brand {
+    color: #fadf7c;
+    padding-left: 5px;
+    text-transform: uppercase;
+    font-family: gtamcond;
+    font-weight: bold;
 }

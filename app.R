@@ -88,16 +88,11 @@ percent_w_loc <- round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow())
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ui <- fluidPage(theme = "bpd_covid19_app.css",
-
-  # Add development warning and link to shinyapps.io page
-  div(id="dev-warning",
-    wellPanel(
-      icon('exclamation-triangle'),
-      p(paste("This application is under active development.",
-            "For a working prototype, please visit:")),
-      a("https://laurenmarietta.shinyapps.io/bpd_covid19/",
-        href="https://laurenmarietta.shinyapps.io/bpd_covid19/")
-      )
+                
+  # Add favicon          
+  tags$head(
+    tags$link(rel = "shortcut icon", href = "favicon.ico"),
+    tags$link(rel = "icon", type = "image/png", sizes = "512x512", href = "favicon.png")
   ),
   
   # App title ----
@@ -177,16 +172,23 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                downloadButton("downloadData", "Download CSV"),
                br(), br(),
                em("The download might take a few seconds."))
-      ),
-    
-    em(paste("Latest query:", last_query_time), align="right", style="opacity: 0.6;")
-    ),
+      )
+  ),
   
-  br(),
-  hr(),
-  img(src="OneLineLogo_RGB_Massachusetts.png", width="300px", 
-      style="opacity: 0.5; display: block; margin-left: auto; margin-right: auto;"),
-  p("Please contact lchambers@aclum.org with questions.", align="center", style="opacity: 0.6;")
+  div(id="footer",
+      em("\n\nLatest query:", last_query_time, 
+         align="right", style="opacity: 0.6;"),
+      br(),
+      hr(),
+      div(align="center",
+          a(href="https://www.aclum.org/", target="_blank",
+            img(src="Logo_CMYK_Massachusetts_Massachusetts.png", height="50px", 
+                style="display: inline; margin: 10px;")),
+          a(href="https://www.data.aclum.org/",  target="_blank",
+            img(src="D4J-logo.png", height="50px", 
+                style="display: inline; margin: 10px;"))),
+      p("Please contact lchambers@aclum.org with questions.", align="center", style="opacity: 0.6;")
+  )
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
