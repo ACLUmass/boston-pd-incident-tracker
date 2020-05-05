@@ -96,7 +96,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   ),
   
   # App title ----
-  titlePanel("Boston Police Incidents : Coronavirus Tracker"),
+  titlePanel("Tracking Boston Police Incidents"),
   
   div(
     navlistPanel(widths = c(3, 9), id="panels",
@@ -104,19 +104,19 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       tabPanel("About", 
                h4("Explore Boston PD Incidents"),
                p(paste("View plots in the different tabs to track the behavior of the",
-                       "Boston Police Department after Governor Baker's",
-                       "declaration of a State of Emergency on March 10, 2020.")),
+                       "Boston Police Department over time, including the frequency and location",
+                       "of specific incident types.")),
                
                h4("About the Data"),
-               HTML(paste("We sourced these police incident reports from",
+               HTML(paste("We source these police incident reports from publicly available data hosted on",
                           "<a href='https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system'>Analyze Boston</a>.",
-                          "The reports posted there go back to June 2015, and are (usually) updated daily.")),
+                          "The reports posted there go back to June 2015, and are (usually) updated daily by the Boston Police.")),
                p("The data sourced for all visualizations on this site are available for download",
                  actionLink("link_to_download", "here."), style="margin-top: 1rem;"),
                
                h4("Source Code"),
                p("Interested programmers can view the source code for this app, written in R, on", 
-                 a("GitHub.", href="https://github.com/ACLUmass/bpd-covid-19-tracker"))
+                 a("GitHub.", href="https://github.com/ACLUmass/boston-pd-incident-tracker", target="_blank"))
                ),
       
       tabPanel("Year-to-Year Comparison", 
