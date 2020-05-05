@@ -30,7 +30,10 @@ violations <- read_csv(violations_filename,
                          incident_group = col_character(),
                          desc = col_character()
                        ))
-group_choices <- c("--", "All", violations %>% pull(incident_group) %>% unique() %>% sort())
+group_choices <- c("--", "All", violations %>% 
+                     pull(incident_group) %>% 
+                     unique() %>% 
+                     sort())
 group_choices <- c(group_choices[group_choices != "Other"], "Other")
 
 # Define modal UI explaining incident types
@@ -88,6 +91,9 @@ percent_w_loc <- round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow())
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ui <- fluidPage(theme = "bpd_covid19_app.css",
+  
+  # Use shinyjs package for dynamic enabling/disabling          
+  shinyjs::useShinyjs(),
                 
   # Add favicon          
   tags$head(
@@ -123,7 +129,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Incidents by Type",
-               wellPanel(
+               wellPanel(id="internal_well",
                  p("Select up to three kinds of incidents to plot versus time.", 
                    actionLink("modal_incidents", label = NULL, icon=icon("info-circle"))),
                  splitLayout(
@@ -133,6 +139,14 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                                selected = "Motor Vehicle", multiple=FALSE),
                    selectInput("select_incidentgroup3", label = NULL, choices = group_choices,
                                selected = "Investigations", multiple=FALSE)
+                 ),
+                 splitLayout(
+                   selectInput("select_incident1", label = NULL, choices = group_choices,
+                               selected = "All", multiple=FALSE),
+                   selectInput("select_incident2", label = NULL, choices = group_choices,
+                               selected = "All", multiple=FALSE),
+                   selectInput("select_incident3", label = NULL, choices = group_choices,
+                               selected = "All", multiple=FALSE)
                  )),
                withSpinner(plotOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
@@ -267,20 +281,79 @@ server <- function(input, output, session) {
   # 🕰 Incidents by Group v. Time 🕰
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-  # Determine which incidents to plot
-  inc_grps_to_plot <- reactive({
-    c(input$select_incidentgroup1, 
-      input$select_incidentgroup2,
-      input$select_incidentgroup3)
-  })
-  
   # Connect modal to incident info link
   observeEvent(input$modal_incidents, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
   })
   
+  # Define helper function to update incident dropdown options when
+  # the incident group is updated
+  update_incs_by_group <- function(select_input) {
+    selector_name <- deparse(substitute(select_input))
+    selector_name <- strsplit(selector_name, "$", fixed=T)[[1]] %>% tail(1)
+    n_selector <- substr(selector_name, nchar(selector_name), nchar(selector_name))
+  
+    inc_selector_name <- paste0("select_incident", n_selector)
+    
+    group_name <- select_input
+    
+    if (group_name == "--"| group_name == "All") {
+      choices <- "--"
+      shinyjs::disable(inc_selector_name)
+    } else {
+      shinyjs::enable(inc_selector_name)
+      choices <- df_all %>%
+        filter(incident_group == group_name) %>%
+        pull(desc) %>%
+        unique() %>%
+        sort()
+      
+      choices <- c("All", choices)
+    } 
+    updateSelectInput(session, inc_selector_name, choices = choices)
+  }
+  
+  # Update individual incident dropdowns when group is changed
+  observe({update_incs_by_group(input$select_incidentgroup1)})
+  observe({update_incs_by_group(input$select_incidentgroup2)})
+  observe({update_incs_by_group(input$select_incidentgroup3)})
+  
+  # Helper function to create list of values to plot
+  get_groups_to_plot <- function(grp_list, inc_list) {
+    grp_to_plot <- c()
+    for (i in 1:3) {
+      grp <- grp_list[i]
+      inc <- inc_list[i]
+      
+      if (grp %in% c("--", "All")) {
+        grp <- grp
+      } else if (inc == "All") {
+        grp <- grp
+      } else {
+        grp <- inc
+      }
+      
+      grp_to_plot[i] <- grp
+    }
+    return(grp_to_plot)
+  }
+  
+  # Determine which incidents/groups to plot
+  inc_grps_to_plot <- reactive({
+    c(input$select_incidentgroup1, 
+      input$select_incidentgroup2,
+      input$select_incidentgroup3)
+  })
+  incs_to_plot <- reactive({
+    c(input$select_incident1, 
+      input$select_incident2,
+      input$select_incident3)
+  })
+  
   # Plot
   output$incidents_group_plot <- renderPlot({
+    
+    grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
     
     all_df_all <- df_all %>%
       filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
@@ -291,12 +364,23 @@ server <- function(input, output, session) {
     df_by_incidentgroup <- df_all %>%
       filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
       group_by(date = date(OCCURRED_ON_DATE), incident_group) %>%
-      summarize(n = n()) %>%
-      ungroup() %>%
-      rbind(all_df_all)
+      summarize(n = n())
     
-    df_by_incidentgroup %>%
-      filter(incident_group %in% inc_grps_to_plot()) %>%
+    df_by_incident <- df_all %>%
+      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+      group_by(date = date(OCCURRED_ON_DATE), desc) %>%
+      summarize(n = n()) %>%
+      rename(incident_group = desc) %>%
+      ungroup()%>%
+      bind_rows(all_df_all) %>%
+      bind_rows(df_by_incidentgroup)
+    
+    # Fill in dates where there are none of a given incident 
+    df_by_incident <- tidyr::complete(df_by_incident, incident_group, date, 
+                                      fill=list(n=0))
+    
+    df_by_incident %>%
+      filter(incident_group %in% grps_to_plot) %>%
     ggplot(aes(x=date, y = n, alpha = date >= ymd(20200310), 
                color=incident_group)) +
       geom_vline(aes(xintercept=ymd(20200310)), 

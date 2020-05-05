@@ -174,3 +174,7 @@ a[data-value="Incidents Over Time"]
     font-family: gtamcond;
     font-weight: bold;
 }
+
+#internal_well .selectize-dropdown{
+  white-space: normal;
+}
