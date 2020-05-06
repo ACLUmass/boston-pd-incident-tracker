@@ -73,6 +73,7 @@ last_query_time <- read_rds(query_log_filename) %>%
   format(format="%A %B %e, %Y at %I:%M %p %Z")
 
 last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
+first_date_to_plot <- last_date_to_plot - months(3)
 
 # Filter for mapping
 df_to_map <- df_all %>%
@@ -222,8 +223,6 @@ server <- function(input, output, session) {
   
   output$year_to_year_plot <- renderPlotly({
     
-    first_date_to_plot <- last_date_to_plot - months(3)
-    
     df_last_year <- df_all %>%
       mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
                str_replace("^\\d{4}","2020") %>% as_date) %>%
@@ -257,11 +256,12 @@ server <- function(input, output, session) {
       geom_text(data = subset(data_2019_2020, date_to_plot == last_date_to_plot), 
                 aes(label = year, colour = as.character(year),
                     x = last_date_to_plot + 
-                      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .05,
+                      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .02,
                     y = n), 
-                family="gtam", fontface="bold") +
+                family="gtam", fontface="bold", size=5) +
       scale_x_date(date_labels = "%b %e ",
-                   limits = c(first_date_to_plot, NA)) +
+                   limits = c(first_date_to_plot, NA),
+                   expand = expand_scale(mult = c(.05, .15))) +
       coord_cartesian(clip = 'off')
     
     lines_plotly_style(g, "Incidents", "year_to_year")

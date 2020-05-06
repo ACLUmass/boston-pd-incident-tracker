@@ -55,6 +55,9 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
     traces_darkback <- 1
     traces_to_hide <- 3:4
     
+    g <- g %>%
+      style(textposition = "right", traces = traces_to_hide)
+    
   } else if (plot_type == "inc_by_type"){
     if (length(g$x$data) == 1) {
       traces_lightback <- 0
@@ -76,9 +79,6 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
       
     g <- g %>%
       style(textposition = "right", traces = traces_to_hide)
-    
-    # g <- g %>% 
-    #   layout(cliponaxis=F)
   }
   
   # Replace tooltip key with better names
