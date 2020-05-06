@@ -165,7 +165,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                ),
       
       tabPanel("Major & Minor Incidents Comparison", 
-               withSpinner(plotOutput("major_minor_plot"), 
+               withSpinner(plotlyOutput("major_minor_plot"), 
                            type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Download Data", 
@@ -426,49 +426,53 @@ server <- function(input, output, session) {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # 🙅🏽 Major & Minor Incidents v. Time 🤷🏽
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  output$major_minor_plot <- renderPlot({
-    
-    last_date_value_major <- df_all %>%
-      filter(date(OCCURRED_ON_DATE) == last_date_to_plot,
-             Lauren_says_minor == FALSE) %>%
-      count() %>%
-      pull()
-    
-    last_date_value_minor <- df_all %>%
-      filter(date(OCCURRED_ON_DATE) == last_date_to_plot,
-             Lauren_says_minor == TRUE) %>%
-      count() %>%
-      pull()
-    
-    df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+  output$major_minor_plot <- renderPlotly({
+
+    data_major_minor <- df_all %>%
+      filter(OCCURRED_ON_DATE <= last_date_to_plot) %>%
       group_by(date = date(OCCURRED_ON_DATE), Lauren_says_minor) %>%
-      summarize(n = n()) %>%
-      ggplot(aes(x=date, y = n, alpha = date >= ymd(20200310))) +
-      geom_vline(aes(xintercept=ymd(20200310)), 
-                 linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
-      geom_path(aes(color = Lauren_says_minor, group=Lauren_says_minor), 
-                size=1.3, show.legend = FALSE) +
+      summarize(n = n())
+    
+    labels_too_close <- data_major_minor %>%
+      filter(date == last_date_to_plot) %>%
+      pull(n) %>%
+      diff() < 25
+    
+    maj_min_labs <- data_major_minor %>%
+      filter(date == last_date_to_plot) %>%
+      pull(n)
+    
+    if (labels_too_close) {
+      if (maj_min_labs %>% unique() %>% length() == 1) {
+        maj_min_labs[2] <- max(maj_min_labs) + 25
+      } else {
+        maj_min_labs[maj_min_labs == max(maj_min_labs)] <- max(maj_min_labs) + 15
+      }
+    }
+    
+    g <- data_major_minor %>%
+    ggplot(aes(x=date, y = n, color = Lauren_says_minor)) +
+      geom_line(size=1.3, show.legend = FALSE, alpha=.8) +
       ylim(0, 200) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
-            plot.margin = unit(c(1,5,1,1), "lines")) +
-      scale_x_date(date_labels = "%b %e ", 
-                   limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
-      scale_color_manual(values=c("#ef404d", "#0055aa")) +
-      scale_alpha_manual(values=c(0.3, 1)) +
-      annotate("text", x=ymd(20200310)-2.5, y = 60, angle=90, hjust=0.5,
-               color="#fbb416", family="gtam", size = MA_label_fontsize,
-               lineheight = MA_label_lineheight,
-               label = "State of Emergency\ndeclared in MA") +
-      annotate("text", x = last_date_to_plot, y = last_date_value_major, hjust=-.1, vjust = 0.5,
-               family="gtam", size = year_label_fontsize, color="#ef404d", fontface="bold",
-               label = "Major\nincidents") +
-      annotate("text", x = last_date_to_plot, y = last_date_value_minor, hjust=-.1, vjust = -0.5,
-               family="gtam", size = year_label_fontsize, fontface="bold", color="#0055aa",
-               label = "Minor\nincidents") +
+            legend.position="none") +
+      scale_x_date(date_labels = "%b %e ",
+                   limits = c(last_date_to_plot - months(3), NA),
+                   expand = expand_scale(mult = c(0, .2))) +
+      scale_color_manual(values=c("#ef404d", "#fbb416")) +
+      geom_text(data = subset(data_major_minor, date == last_date_to_plot), 
+                aes(label = ifelse(Lauren_says_minor == "TRUE", 
+                                   "Minor\nIncidents", "Major\nIncidents"), 
+                    color = Lauren_says_minor,
+                    x = last_date_to_plot +
+                    as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .01,
+                    y = maj_min_labs), 
+                family="gtam", fontface="bold", hjust=0) +
       coord_cartesian(clip = 'off')
+    
+    lines_plotly_style(g, "Incidents", "major_minor")
     
   })
   
