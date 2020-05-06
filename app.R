@@ -58,6 +58,8 @@ for (grp in group_choices[3:28]) {
   }
 }
 
+today <- date(now())
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # UI
@@ -99,6 +101,9 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                ),
       
       tabPanel("Year-to-Year Comparison", 
+               wellPanel(id="internal_well",
+                         p("Select date range in 2020 to compare to 2019:"),
+                         dateRangeInput("y2y_date", label=NA)),
                withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Incidents by Type Over Time",
@@ -120,24 +125,38 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                                selected = "All", multiple=FALSE),
                    selectInput("select_incident3", label = NULL, choices = group_choices,
                                selected = "All", multiple=FALSE)
-                 )),
+                 ),
+                 p("Select date range to plot:"),
+                 dateRangeInput("inc_type_date", label=NA)),
                withSpinner(plotlyOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
       
       tabPanel("Incident Locations", 
+               wellPanel(id="internal_well",
+                         p("Select date range in 2020 to compare to 2019:"),
+                         dateRangeInput("loc_date", label=NA,
+                                        start = today - months(1) - days(1), end = today - days(1),
+                                        min = "2015-06-15", max = today - days(1))
+               ),
+               uiOutput("range_warning"),
                splitLayout(align="center", h2("2019"), h2("2020")),
-               p(align="center", "Showing incident locations between March 10 and ", 
-                 textOutput("last_date_str", inline=T)), 
-               br(),
-               em("Please note that only ", 
-                  textOutput("percent_w_loc", inline=T), 
-                  "% of all police incident reports include location coordinates.\n",
-                  style="font-size:11px;"),
+               p(align="center", "Showing incident locations between", 
+                 textOutput("first_date_str", inline=T), 
+                 "and", 
+                 textOutput("last_date_str", inline=T), 
+                 br(),
+                 em("Please note that only ", 
+                    textOutput("percent_w_loc", inline=T), 
+                    "% of all police incident reports include location coordinates.\n",
+                    style="font-size:11px;")),
                withSpinner(uiOutput("synced_maps"), 
                            type=4, color="#b5b5b5", size=0.5)
                ),
       
       tabPanel("Major & Minor Incidents Comparison", 
+               wellPanel(id="internal_well",
+                         p("Select date range to plot:"),
+                         dateRangeInput("maj_min_date", label=NA)),
                withSpinner(plotlyOutput("major_minor_plot"), 
                            type=4, color="#b5b5b5", size=0.5)),
       
@@ -202,9 +221,10 @@ server <- function(input, output, session) {
            date = date(OCCURRED_ON_DATE)) %>%
     merge(violations, 
           by="OFFENSE_CODE", all.x=T)
+  
+  # Get total number of incidents
   n_incidents <- df_all %>% nrow()
   output$n_inc_str <- renderText({n_incidents})
-  
   
   # Load time of last query
   last_query_time <- read_rds(query_log_filename) %>%
@@ -217,13 +237,11 @@ server <- function(input, output, session) {
   last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
   first_date_to_plot <- last_date_to_plot - months(3)
   
-  output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
+  earliest_date <- min(df_all$date, na.rm=T)
   
   # Filter for mapping
   df_to_map <- df_all %>%
-    filter((date <= last_date_to_plot & date >= ymd(20200301)) | 
-             (date <= last_date_to_plot - years(1) & date >= ymd(20190301)),
-           !is.na(Long)) %>%
+    filter(!is.na(Long)) %>%
     mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
            labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
                                format="%A %B %e, %Y at %I:%M %p"), 
@@ -240,7 +258,19 @@ server <- function(input, output, session) {
   # 🗓 2019 v. 2020 🗓 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
+  isolate({
+    updateDateRangeInput(session, "y2y_date", 
+                         start = first_date_to_plot, end = last_date_to_plot, 
+                         min = ymd(20200101), max = last_date_to_plot)
+  })
+  
   output$year_to_year_plot <- renderPlotly({
+    
+    first_date_to_plot <- input$y2y_date[1]
+    last_date_to_plot <- input$y2y_date[2]
+    
+    label_x <- last_date_to_plot + 
+      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .02
     
     df_last_year <- df_all %>%
       mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
@@ -265,7 +295,7 @@ server <- function(input, output, session) {
     
     g <- data_2019_2020 %>%
     ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
-      geom_line(size=1.3, alpha=0.8) +
+      geom_line(size=1, alpha=0.8) +
       ylim(0, 350) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
@@ -274,12 +304,11 @@ server <- function(input, output, session) {
       scale_color_manual(values=c("black", "#ef404d")) +
       geom_text(data = subset(data_2019_2020, date_to_plot == last_date_to_plot), 
                 aes(label = year, colour = as.character(year),
-                    x = last_date_to_plot + 
-                      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .02,
+                    x = label_x,
                     y = n), 
                 family="gtam", fontface="bold", size=5) +
       scale_x_date(date_labels = "%b %e ",
-                   limits = c(first_date_to_plot, NA),
+                   limits = c(first_date_to_plot, label_x),
                    expand = expand_scale(mult = c(.05, .15))) +
       coord_cartesian(clip = 'off')
     
@@ -360,8 +389,18 @@ server <- function(input, output, session) {
       input$select_incident3)
   })
   
+  # Update date range
+  isolate({
+    updateDateRangeInput(session, "inc_type_date", 
+      start = first_date_to_plot, end = last_date_to_plot, 
+      min = earliest_date, max = last_date_to_plot)
+  })
+  
   # Plot
   output$incidents_group_plot <- renderPlotly({
+    
+    first_date_to_plot <- input$inc_type_date[1]
+    last_date_to_plot <- input$inc_type_date[2]
     
     grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
     
@@ -389,13 +428,13 @@ server <- function(input, output, session) {
     g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
     ggplot(aes(x=date, y = n, color=incident_group)) +
-      geom_line(size=1.3, show.legend = T, alpha=0.8) +
+      geom_line(size=1, show.legend = T, alpha=0.8) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(text = element_text(family="gtam", size = axis_label_fontsize),
             legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
             legend.key.width = unit(1, "cm")) +
       scale_x_date(date_labels = "%b %e ", 
-                   limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
+                   limits = c(first_date_to_plot, last_date_to_plot)) +
       scale_color_manual(values=c("black", "#ef404d", "#fbb416")) +
       coord_cartesian(clip = 'off')
     
@@ -410,11 +449,41 @@ server <- function(input, output, session) {
   # Plot map
   output$synced_maps <- renderUI({
     
-    map_2019 <- leaflet(df_to_map %>%filter(YEAR==2019), 
-                  options = leafletOptions(attributionControl = T)) %>%
+    first_date_to_plot <- input$loc_date[1]
+    last_date_to_plot <- input$loc_date[2]
+    
+    if (last_date_to_plot - first_date_to_plot > days(31)) {
+      first_date_to_plot <- last_date_to_plot - months(1)
+      
+      output$range_warning <- renderUI({
+        div(id="dev-warning",
+            wellPanel(
+              fluidRow(
+                column(1, icon('exclamation-triangle')),
+                column(11, h4("Max Date Range Exceeded"),
+                       em("Due to computation limitations, please limit",
+                          "your date range to one month or shorter", 
+                          style="margin-top:0px"))
+              )
+            )
+        )
+      })
+    } else {
+      output$range_warning <- renderUI({
+        div(style="display:none;")
+      })
+    }
+    
+    output$first_date_str <- renderText({format(first_date_to_plot, format="%B %e")})
+    output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
+    
+    map_2019 <- df_to_map %>%
+      filter(date >= ymd(gsub("\\d{4}", "2019", first_date_to_plot)),
+             date <= ymd(gsub("\\d{4}", "2019", last_date_to_plot))) %>%
+    leaflet(options = leafletOptions(attributionControl = T)) %>%
       addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
       addCircleMarkers(lng = ~Long, lat = ~Lat,
-                       label = lapply(df_to_map %>%filter(YEAR==2019) %>%pull(labs), HTML),
+                       label = ~lapply(labs, HTML),
                        stroke=F, fillOpacity=.2, radius=2.5,
                        color="#0055aa", group="circle_marks") %>%
       addEasyButton(easyButton(
@@ -424,11 +493,13 @@ server <- function(input, output, session) {
                    map.fitBounds(groupLayer.getBounds());
                }")))
     
-    map_2020 <- leaflet(df_to_map %>%filter(YEAR==2020), 
-                  options = leafletOptions(attributionControl = T)) %>%
+    map_2020 <- df_to_map %>%
+      filter(date <= last_date_to_plot,
+             date >= first_date_to_plot) %>%
+    leaflet(options = leafletOptions(attributionControl = T)) %>%
       addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
       addCircleMarkers(lng = ~Long, lat = ~Lat, 
-                       label = lapply(df_to_map %>%filter(YEAR==2020) %>%pull(labs), HTML),
+                       label = ~lapply(labs, HTML),
                        stroke=F, fillOpacity=.2, radius=2.5,
                        color="#0055aa", group="circle_marks") %>%
       addEasyButton(easyButton(
@@ -445,7 +516,20 @@ server <- function(input, output, session) {
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # 🙅🏽 Major & Minor Incidents v. Time 🤷🏽
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  isolate({
+    updateDateRangeInput(session, "maj_min_date", 
+                         start = first_date_to_plot, end = last_date_to_plot, 
+                         min = earliest_date, max = last_date_to_plot)
+  })
+  
   output$major_minor_plot <- renderPlotly({
+    
+    first_date_to_plot <- input$maj_min_date[1]
+    last_date_to_plot <- input$maj_min_date[2]
+    
+    label_x <- last_date_to_plot +
+      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .01
 
     data_major_minor <- df_all %>%
       filter(date <= last_date_to_plot) %>%
@@ -471,22 +555,21 @@ server <- function(input, output, session) {
     
     g <- data_major_minor %>%
     ggplot(aes(x=date, y = n, color = Lauren_says_minor)) +
-      geom_line(size=1.3, show.legend = FALSE, alpha=.8) +
+      geom_line(size=1, show.legend = FALSE, alpha=.8) +
       ylim(0, 200) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
             legend.position="none") +
       scale_x_date(date_labels = "%b %e ",
-                   limits = c(last_date_to_plot - months(3), NA),
+                   limits = c(first_date_to_plot, label_x),
                    expand = expand_scale(mult = c(0, .2))) +
       scale_color_manual(values=c("#ef404d", "#fbb416")) +
       geom_text(data = subset(data_major_minor, date == last_date_to_plot), 
                 aes(label = ifelse(Lauren_says_minor == "TRUE", 
                                    "Minor\nIncidents", "Major\nIncidents"), 
                     color = Lauren_says_minor,
-                    x = last_date_to_plot +
-                    as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .01,
+                    x = label_x,
                     y = maj_min_labs), 
                 family="gtam", fontface="bold", hjust=0) +
       coord_cartesian(clip = 'off')

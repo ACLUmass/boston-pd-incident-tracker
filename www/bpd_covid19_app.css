@@ -178,3 +178,7 @@ a[data-value="Major & Minor Incidents Comparison"]
 #internal_well .selectize-dropdown{
   white-space: normal;
 }
+
+a[data-value="Incident Locations"] #internal_well{
+  margin-bottom: 0px;
+}
