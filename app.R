@@ -8,6 +8,9 @@ library(shinycssloaders)
 library(showtext)
 library(leaflet)
 library(leafsync)
+library(plotly)
+
+source("plotly_builders.R")
 
 # Set ggplot settings
 theme_set(theme_minimal())
@@ -126,7 +129,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                ),
       
       tabPanel("Year-to-Year Comparison", 
-               withSpinner(plotOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
+               withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Incidents by Type Over Time",
                wellPanel(id="internal_well",
@@ -217,9 +220,9 @@ server <- function(input, output, session) {
   # 🗓 2019 v. 2020 🗓 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-  output$year_to_year_plot <- renderPlot({
+  output$year_to_year_plot <- renderPlotly({
     
-    first_date_to_plot <- last_date_to_plot - months(2)
+    first_date_to_plot <- last_date_to_plot - months(3)
     
     df_last_year <- df_all %>%
       mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
@@ -228,48 +231,40 @@ server <- function(input, output, session) {
              date_to_plot <= last_date_to_plot, 
              date_to_plot >= first_date_to_plot) %>%
       group_by(date_to_plot) %>%
-      summarize(n = n())
+      summarize(n = n())  %>%
+      ungroup() %>%
+      mutate(year = 2019)
     
-    last_date_value_2020 <- df_all %>%
-      filter(date(OCCURRED_ON_DATE) == last_date_to_plot) %>%
-      count() %>%
-      pull()
-    
-    last_date_value_2019 <- df_last_year %>%
-      filter(date(date_to_plot) == last_date_to_plot) %>%
-      pull(n)
-    
-    df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
+    data_2019_2020 <- df_all %>%
+      filter(OCCURRED_ON_DATE >= first_date_to_plot,
+             OCCURRED_ON_DATE <= last_date_to_plot) %>%
       mutate(date_to_plot = date(OCCURRED_ON_DATE)) %>%
       group_by(date_to_plot) %>%
       summarize(n = n()) %>%
-    ggplot(aes(x = date_to_plot, y = n)) +
-      geom_vline(aes(xintercept = ymd(20200310)),
-                 linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
-      geom_line(data=df_last_year, size=1.3, alpha=.4) +
-      geom_path(aes(group = 1, color = date_to_plot >= ymd(20200310)), 
-                size=1.3, show.legend = FALSE) +
-      geom_point(aes(color = date_to_plot >= ymd(20200310)), size=.6, show.legend = FALSE) +
+      ungroup() %>%
+      mutate(year = 2020) %>%
+      bind_rows(df_last_year)
+    
+    g <- data_2019_2020 %>%
+    ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
+      geom_line(size=1.3) +
       ylim(0, 350) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
-            plot.margin = unit(c(1,3,1,1), "lines")) +
+            legend.position='none') +
       scale_color_manual(values=c("black", "#fbb416")) +
-      annotate("text", x = ymd(20200310) - 2.5, y = 100, angle=90, hjust=0.5,
-               family="gtam", size = MA_label_fontsize, color="#fbb416", 
-               lineheight = MA_label_lineheight,
-               label = "State of Emergency\ndeclared in MA") +
-      annotate("text", x = last_date_to_plot, y = last_date_value_2020, hjust=-.2,
-               family="gtam", size = year_label_fontsize, color="#fbb416", fontface="bold",
-               label = "2020") +
-      annotate("text", x = last_date_to_plot, y = last_date_value_2019, hjust=-.2,
-               family="gtam", size = year_label_fontsize, alpha=0.5, fontface="bold",
-               label = "2019") +
+      geom_text(data = subset(data_2019_2020, date_to_plot == last_date_to_plot), 
+                aes(label = year, colour = as.character(year),
+                    x = last_date_to_plot + 
+                      as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .05,
+                    y = n), 
+                family="gtam", fontface="bold") +
       scale_x_date(date_labels = "%b %e ",
-                   limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
+                   limits = c(first_date_to_plot, NA)) +
       coord_cartesian(clip = 'off')
+    
+    lines_plotly_style(g, "Incidents", "year_to_year")
     
   })
   
