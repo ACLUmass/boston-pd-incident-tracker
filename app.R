@@ -58,37 +58,6 @@ for (grp in group_choices[3:28]) {
   }
 }
 
-# Load all incidents
-df_all <- read_rds(db_filename) %>%
-  mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE)) %>%
-  merge(violations, 
-        by="OFFENSE_CODE", all.x=T)
-n_incidents <- df_all %>% nrow()
-
-# Load time of last query
-last_query_time <- read_rds(query_log_filename) %>%
-  tail(1) %>%
-  pull(query_time) %>%
-  with_tz(tzone="America/New_York") %>%
-  format(format="%A %B %e, %Y at %I:%M %p %Z")
-
-last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
-first_date_to_plot <- last_date_to_plot - months(3)
-
-# Filter for mapping
-df_to_map <- df_all %>%
-  filter((OCCURRED_ON_DATE <= last_date_to_plot & OCCURRED_ON_DATE >= ymd(20200301)) | 
-           (OCCURRED_ON_DATE <= last_date_to_plot - years(1) & OCCURRED_ON_DATE >= ymd(20190301)),
-         !is.na(Long)) %>%
-  mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
-         labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
-                             format="%A %B %e, %Y at %I:%M %p"), 
-                      desc, sep="<br/>")) %>%
-  filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
-
-# Calculate percentage of incidents with locaation
-percent_w_loc <- round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1)
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # UI
@@ -159,7 +128,9 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                splitLayout(align="center", h2("2019"), h2("2020")),
                p(align="center", paste0("Showing incident locations between March 10 and ", 
                                        format(last_date_to_plot, format="%B %e.\n")), br(),
-                 em(paste0("Please note that only ", percent_w_loc, "% of all police incident reports include location coordinates.\n"),
+                 em("Please note that only ", 
+                    textOutput("percent_w_loc", inline=T), 
+                    "% of all police incident reports include location coordinates.\n",
                     style="font-size:11px;")),
                withSpinner(uiOutput("synced_maps"), 
                            type=4, color="#b5b5b5", size=0.5)
@@ -190,7 +161,8 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   ),
   
   div(id="footer",
-      em("\n\nLatest query:", last_query_time, 
+      em("\n\nLatest query:", 
+         textOutput("last_query_time_str", inline=T), 
          align="right", style="opacity: 0.6;"),
       br(),
       hr(),
@@ -218,6 +190,46 @@ server <- function(input, output, session) {
   showtext_auto()
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Load Data
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Load all incidents
+  df_all <- read_rds(db_filename) %>%
+    mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE),
+           date = date(OCCURRED_ON_DATE)) %>%
+    merge(violations, 
+          by="OFFENSE_CODE", all.x=T)
+  n_incidents <- df_all %>% nrow()
+  
+  # Load time of last query
+  last_query_time <- read_rds(query_log_filename) %>%
+    tail(1) %>%
+    pull(query_time) %>%
+    with_tz(tzone="America/New_York") %>%
+    format(format="%A %B %e, %Y at %I:%M %p %Z")
+  output$last_query_time_str <- renderText({last_query_time})
+  
+  last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
+  first_date_to_plot <- last_date_to_plot - months(3)
+  
+  # Filter for mapping
+  df_to_map <- df_all %>%
+    filter((date <= last_date_to_plot & date >= ymd(20200301)) | 
+             (date <= last_date_to_plot - years(1) & date >= ymd(20190301)),
+           !is.na(Long)) %>%
+    mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
+           labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
+                               format="%A %B %e, %Y at %I:%M %p"), 
+                        desc, sep="<br/>")) %>%
+    filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
+  
+  # Calculate percentage of incidents with location
+  output$percent_w_loc <- renderText({
+    round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1) %>%
+      as.character()
+  })
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # 🗓 2019 v. 2020 🗓 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
@@ -235,9 +247,9 @@ server <- function(input, output, session) {
       mutate(year = 2019)
     
     data_2019_2020 <- df_all %>%
-      filter(OCCURRED_ON_DATE >= first_date_to_plot,
-             OCCURRED_ON_DATE <= last_date_to_plot) %>%
-      mutate(date_to_plot = date(OCCURRED_ON_DATE)) %>%
+      filter(date >= first_date_to_plot,
+             date <= last_date_to_plot) %>%
+      mutate(date_to_plot = date) %>%
       group_by(date_to_plot) %>%
       summarize(n = n()) %>%
       ungroup() %>%
@@ -347,16 +359,16 @@ server <- function(input, output, session) {
     grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
     
     all_df_all <- df_all %>%
-      group_by(date = date(OCCURRED_ON_DATE)) %>%
+      group_by(date) %>%
       summarize(n = n()) %>%
       mutate(incident_group = "All")
     
     df_by_incidentgroup <- df_all %>%
-      group_by(date = date(OCCURRED_ON_DATE), incident_group) %>%
+      group_by(date, incident_group) %>%
       summarize(n = n())
     
     df_by_incident <- df_all %>%
-      group_by(date = date(OCCURRED_ON_DATE), desc) %>%
+      group_by(date = date, desc) %>%
       summarize(n = n()) %>%
       rename(incident_group = desc) %>%
       ungroup()%>%
@@ -429,8 +441,8 @@ server <- function(input, output, session) {
   output$major_minor_plot <- renderPlotly({
 
     data_major_minor <- df_all %>%
-      filter(OCCURRED_ON_DATE <= last_date_to_plot) %>%
-      group_by(date = date(OCCURRED_ON_DATE), Lauren_says_minor) %>%
+      filter(date <= last_date_to_plot) %>%
+      group_by(date, Lauren_says_minor) %>%
       summarize(n = n())
     
     labels_too_close <- data_major_minor %>%
