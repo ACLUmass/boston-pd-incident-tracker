@@ -126,12 +126,13 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Incident Locations", 
                splitLayout(align="center", h2("2019"), h2("2020")),
-               p(align="center", paste0("Showing incident locations between March 10 and ", 
-                                       format(last_date_to_plot, format="%B %e.\n")), br(),
-                 em("Please note that only ", 
-                    textOutput("percent_w_loc", inline=T), 
-                    "% of all police incident reports include location coordinates.\n",
-                    style="font-size:11px;")),
+               p(align="center", "Showing incident locations between March 10 and ", 
+                 textOutput("last_date_str", inline=T)), 
+               br(),
+               em("Please note that only ", 
+                  textOutput("percent_w_loc", inline=T), 
+                  "% of all police incident reports include location coordinates.\n",
+                  style="font-size:11px;"),
                withSpinner(uiOutput("synced_maps"), 
                            type=4, color="#b5b5b5", size=0.5)
                ),
@@ -152,7 +153,9 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                        "to say, we do not alter incident details or metadata except to",
                        "compile entries cumulatively. This accumulated database",
                        "is the source of all visualizations on this site.")),
-               p(strong("Current database size: "), n_incidents, "incidents"),
+               p(strong("Current database size: "),
+                 textOutput("n_inc_str"), 
+                 "incidents"),
                p("Our curated database is available for download here:"),
                downloadButton("downloadData", "Download CSV"),
                br(), br(),
@@ -200,6 +203,8 @@ server <- function(input, output, session) {
     merge(violations, 
           by="OFFENSE_CODE", all.x=T)
   n_incidents <- df_all %>% nrow()
+  output$n_inc_str <- renderText({n_incidents})
+  
   
   # Load time of last query
   last_query_time <- read_rds(query_log_filename) %>%
@@ -211,6 +216,8 @@ server <- function(input, output, session) {
   
   last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
   first_date_to_plot <- last_date_to_plot - months(3)
+  
+  output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
   
   # Filter for mapping
   df_to_map <- df_all %>%
