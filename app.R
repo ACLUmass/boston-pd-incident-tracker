@@ -151,7 +151,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                    selectInput("select_incident3", label = NULL, choices = group_choices,
                                selected = "All", multiple=FALSE)
                  )),
-               withSpinner(plotOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
+               withSpinner(plotlyOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
       
       tabPanel("Incident Locations", 
@@ -247,13 +247,13 @@ server <- function(input, output, session) {
     
     g <- data_2019_2020 %>%
     ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
-      geom_line(size=1.3) +
+      geom_line(size=1.3, alpha=0.8) +
       ylim(0, 350) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
             legend.position='none') +
-      scale_color_manual(values=c("black", "#fbb416")) +
+      scale_color_manual(values=c("black", "#ef404d")) +
       geom_text(data = subset(data_2019_2020, date_to_plot == last_date_to_plot), 
                 aes(label = year, colour = as.character(year),
                     x = last_date_to_plot + 
@@ -342,59 +342,45 @@ server <- function(input, output, session) {
   })
   
   # Plot
-  output$incidents_group_plot <- renderPlot({
+  output$incidents_group_plot <- renderPlotly({
     
     grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
     
     all_df_all <- df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
       group_by(date = date(OCCURRED_ON_DATE)) %>%
       summarize(n = n()) %>%
       mutate(incident_group = "All")
     
     df_by_incidentgroup <- df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
       group_by(date = date(OCCURRED_ON_DATE), incident_group) %>%
       summarize(n = n())
     
     df_by_incident <- df_all %>%
-      filter(OCCURRED_ON_DATE >= last_date_to_plot - months(2)) %>%
       group_by(date = date(OCCURRED_ON_DATE), desc) %>%
       summarize(n = n()) %>%
       rename(incident_group = desc) %>%
       ungroup()%>%
       bind_rows(all_df_all) %>%
       bind_rows(df_by_incidentgroup)
-    
+  
     # Fill in dates where there are none of a given incident 
-    df_by_incident <- tidyr::complete(df_by_incident, incident_group, date, 
+    df_by_incident <- tidyr::complete(df_by_incident, incident_group, date,
                                       fill=list(n=0))
     
-    df_by_incident %>%
+    g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
-    ggplot(aes(x=date, y = n, alpha = date >= ymd(20200310), 
-               color=incident_group)) +
-      geom_vline(aes(xintercept=ymd(20200310)), 
-                 linetype="dashed", color = "#fbb416", size=1.2, alpha=0.5) +
-      geom_path(aes(group=incident_group), 
-                size=1.3, show.legend = T) +
+    ggplot(aes(x=date, y = n, color=incident_group)) +
+      geom_line(size=1.3, show.legend = T, alpha=0.8) +
       labs(x = "", y = "Number of Incidents", color="") +
-      theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size = axis_label_fontsize),
-            plot.margin = unit(c(4,1,4,1), "lines"),
-            legend.position = c(.5, -.22), legend.direction="horizontal",
+      theme(text = element_text(family="gtam", size = axis_label_fontsize),
             legend.background = element_rect(fill=alpha('lightgray', 0.4), color=NA),
-            legend.key.width = unit(1, "cm"), 
-            legend.text = element_text(size=legend_label_fontsize)) +
+            legend.key.width = unit(1, "cm")) +
       scale_x_date(date_labels = "%b %e ", 
                    limits = c(last_date_to_plot - months(2), last_date_to_plot)) +
-      scale_color_manual(values=c("black", "#ef404d", "#0055aa")) +
-      scale_alpha_manual(values=c(0.3, 1), guide="none") +
-      annotate("text", x=ymd(20200310), y = Inf, hjust=0.5,
-               color="#fbb416", family="gtam", size = MA_label_fontsize,
-               lineheight = MA_label_lineheight,
-               label = "State of Emergency\ndeclared in MA\n\n") +
+      scale_color_manual(values=c("black", "#ef404d", "#fbb416")) +
       coord_cartesian(clip = 'off')
+    
+    lines_plotly_style(g, "Incidents", "inc_by_type")
     
   })
   

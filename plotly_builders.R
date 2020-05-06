@@ -194,35 +194,60 @@ legend_layout_bottom <- list(orientation = "h",
 
 # Convert lines to ggplotly
 lines_plotly_style <- function(gg_plot, y_label, plot_type) {
-  
-  g <- ggplotly(gg_plot, tooltip = c("x", "y"))
 
-  g <- g %>%
-      config(modeBarButtonsToRemove = modeBarButtonsToRemove_time) %>%
-      layout(legend = legend_layout_bottom)
   
   if (plot_type == "year_to_year") {
+    g <- ggplotly(gg_plot, tooltip = c("x", "y"))
+    
     traces_lightback <- 2
     traces_darkback <- 1
     traces_to_hide <- 3:4
     
-    # Replace tooltip key with better names
-    for (i in 1:length(g$x$data)) {
-      text_rep <- g$x$data[[i]]$text %>%
-        gsub("date_to_plot", "Date", .) %>%
-        gsub("n", "Incidents", .)
-      
-      if (g$x$data[[i]]$name == "2019") {
-        text_rep <- text_rep %>%
-          gsub("\\d{4}", "2019", .)
-      }
-      
-      g <- g %>%
-        style(text = text_rep, traces=i)
+  } else if (plot_type == "inc_by_type"){
+    
+    g <- ggplotly(gg_plot, tooltip = c("x", "y"))
+    
+    if (length(g$x$data) == 1) {
+      traces_lightback <- 0
+      traces_darkback <- 1
+    } else if (length(g$x$data) == 2) {
+      traces_lightback <- 0
+      traces_darkback <- 1:2
+    } else if (length(g$x$data) == 3) {
+      traces_lightback <- 3
+      traces_darkback <- 1:2
     }
+    
+    traces_to_hide <- 0
+    
+  } else {
+    
+    g <- ggplotly(gg_plot)
+    
+    traces_lightback <- 0
+    traces_darkback <- 1:4
+    traces_to_hide <- 0
+  }
+  
+  # Replace tooltip key with better names
+  for (i in 1:length(g$x$data)) {
+    text_rep <- g$x$data[[i]]$text %>%
+      gsub("date_to_plot", "Date", .) %>%
+      gsub("date", "Date", .) %>%
+      gsub("n:", "Incidents:", .)
+    
+    if (g$x$data[[i]]$name == "2019") {
+      text_rep <- text_rep %>%
+        gsub("\\d{4}", "2019", .)
+    }
+    
+    g <- g %>%
+      style(text = text_rep, traces=i)
   }
      
   g %>%
+    config(modeBarButtonsToRemove = modeBarButtonsToRemove_time) %>%
+    layout(legend = legend_layout_bottom) %>%
     style(hoverlabel = label_lightback, traces = traces_lightback) %>%
     style(hoverlabel = label_darkback, traces = traces_darkback) %>%
     style(hoverinfo = "none", traces = traces_to_hide)
