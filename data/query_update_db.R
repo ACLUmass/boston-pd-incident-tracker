@@ -10,6 +10,13 @@ library(lubridate)
 library(httr)
 library(jsonlite)
 library(readr)
+library(aws.s3)
+
+# Read environment vars for AWS keys
+readRenviron("../.Renviron")
+
+# Set up connection to S3 bucket
+aws_s3_bucket <- get_bucket("app-bpd-incidents")
 
 # Define filenames and column data types
 db_filename <- "all_bpd_incidents_cumulative.rds"

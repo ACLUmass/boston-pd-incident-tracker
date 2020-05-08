@@ -4,6 +4,7 @@ data/new_data_log.txt
 data/testing
 data/cron_log.txt
 dev
+.Renviron
 
 # OS files
 .DS_Store

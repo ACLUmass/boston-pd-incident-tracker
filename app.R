@@ -9,8 +9,15 @@ library(showtext)
 library(leaflet)
 library(leafsync)
 library(plotly)
+library(aws.s3)
 
 source("plotly_builders.R")
+
+# Read environment vars
+readRenviron(".Renviron")
+
+# Set up connection to S3 bucket
+aws_s3_bucket <- get_bucket("app-bpd-incidents")
 
 # Set ggplot settings
 theme_set(theme_minimal())
