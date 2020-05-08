@@ -63,7 +63,13 @@ for (grp in group_choices[3:28]) {
   }
 }
 
+# Define today's date
 today <- date(now())
+
+# Load ggplot-friendly font using show_text
+font_add("gtam", "www/fonts/gtamerica/GT-America-Standard-Regular.ttf",
+         bold = "www/fonts/gtamerica/GT-America-Standard-Bold.ttf")
+showtext_auto()
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -210,11 +216,6 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 server <- function(input, output, session) {
-
-  # Load ggplot-friendly font using show_text
-  font_add("gtam", "GT-America-Standard-Regular.ttf",
-           bold = "GT-America-Standard-Bold.ttf")
-  showtext_auto()
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Load Data

@@ -3,8 +3,14 @@ data/*.rds
 data/new_data_log.txt
 data/testing
 data/cron_log.txt
+
+# Development
 dev
+data_testing/
+
+# R
 .Renviron
+rsconnect/
 
 # OS files
 .DS_Store

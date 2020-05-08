@@ -1,0 +1,29 @@
+<!-- HTML file with iframe to get around shinyapps.io not allowing favicons -->
+<!doctype html>
+<html>
+	<head>
+		<title>Tracking Boston Police Incidents</title>
+		<link rel="shortcut icon" href="https://data.aclum.org/favicons/favicon.ico">
+		<link rel="icon" type="image/png" sizes="512x512" href="https://data.aclum.org/favicons/favicon.png">
+	</head>	
+	<style>
+		iframe {
+			border:none;
+			overflow:hidden;
+			height:100%;
+			width:100%;
+			position: fixed;
+		}
+		body {
+			margin: 0px;
+			padding:0px;
+			overflow:hidden
+		}
+	</style>
+
+	<body>
+		<iframe src="https://laurenmarietta.shinyapps.io/bpd_incidents_test/" 
+		frameborder="0" height="100%" width="100%"></iframe>
+	</body>
+
+</html>

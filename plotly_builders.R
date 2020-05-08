@@ -6,8 +6,8 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load ggplot-friendly font using show_text
-font_add("gtam", "GT-America-Standard-Regular.ttf",
-         bold = "GT-America-Standard-Bold.ttf")
+font_add("gtam", "www/fonts/gtamerica/GT-America-Standard-Regular.ttf",
+         bold = "www/fonts/gtamerica/GT-America-Standard-Bold.ttf")
 showtext_auto()
 
 # Define ggplotly settings
