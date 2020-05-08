@@ -60,6 +60,10 @@ pipe_print <- function(data, message = "", print_data = F) {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 get_all_incident_data <- function() {
   
+  # Get data log from AWS
+  save_object(new_data_log_filename, bucket = aws_s3_bucket, 
+              file = new_data_log_filename)
+  
   # Check how many incidents were present after the last query
   n_last_incidents <- readLines(new_data_log_filename) %>%
     tail(1) %>%
@@ -118,14 +122,31 @@ get_all_incident_data <- function() {
   # Update log to reflect latest query
   print("Updating query log")
   query_history <- readRDS(query_log_filename) %>%
-    rbind(data.frame(query_time=query_time)) %>%
-    saveRDS(query_log_filename)
+    rbind(data.frame(query_time=query_time))
+  # Save locally
+  saveRDS(query_history, query_log_filename)
+  # Save to AWS
+  aws_log <- s3saveRDS(query_history, bucket = aws_s3_bucket, 
+                       object = query_log_filename)
+  if (aws_log) {
+    print("Uploaded query log to AWS S3 bucket.")
+  } else {
+    warning("Failed to upload query log to AWS.")
+  }
   
   # Update log to reflect if there are new data
   print("Updating data length log")
   line = paste(query_time, n_new, "lines")
+  # Append to file locally
   write(line, file = new_data_log_filename, append=TRUE)
-  
+  # Save to AWS
+  aws_length <- put_object(new_data_log_filename, bucket = aws_s3_bucket)
+  if (aws_length) {
+    print("Uploaded data length log to AWS S3 bucket.")
+  } else {
+    warning("Failed to upload data length log to AWS.")
+  }
+
   return(list("query_time" = query_time, 
               "df_all" = df_all))
   
@@ -226,8 +247,15 @@ merge_into_previous <- function (old_df, new_df, datetime) {
 # if __name__ == "__main__":
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if (!interactive()) {
-  # Load existing DB
-  old_df <- readRDS(db_filename)
+  # Load existing DB from AWS
+  old_df <- s3readRDS(db_filename, bucket = aws_s3_bucket)
+  
+  # Check that AWS DB matches local DB?
+  old_df_local <- readRDS(db_filename)
+  match_dbs <- identical(old_df, old_df_local)
+  if (!match_dbs) {
+    stop("AWS database does NOT match local database!")
+  }
   
   # Query DB for new entries
   query <- get_all_incident_data()
@@ -238,9 +266,19 @@ if (!interactive()) {
     old_df, query$df_all, datetime
   )
   
-  # Save out!
+  # Save out locally!
   saveRDS(df_all_combined, db_filename)
   print(paste("Saved updated database to", db_filename))
+  
+  # Upload to AWS!!
+  aws_df <- s3saveRDS(df_all_combined, bucket = aws_s3_bucket, 
+                      object = db_filename)
+  if (aws_df) {
+    print("Uploaded updated database to AWS S3 bucket.")
+  } else {
+    warning("Failed to upload database to AWS.")
+  }
+  
 }
 
 # Report out memory usage

@@ -28,8 +28,6 @@ legend_label_fontsize = 12 #12 / 20
 year_label_fontsize = 5 #5 / 9
 
 # Define filenames and column data types
-db_filename <- "data/all_bpd_incidents_cumulative.rds"
-query_log_filename <- "data/query_log.rds"
 violations_filename <- "data/violations_major_minor.csv"
 
 # Load violation classifications
@@ -222,19 +220,21 @@ server <- function(input, output, session) {
   # Load Data
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-  # Load all incidents
-  df_all <- read_rds(db_filename) %>%
+  # Load all incidents FROM AWS, omg
+  df_all <- s3readRDS(object = "all_bpd_incidents_cumulative.rds", 
+                      bucket = aws_s3_bucket) %>%
     mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE),
            date = date(OCCURRED_ON_DATE)) %>%
-    merge(violations, 
+    merge(violations,
           by="OFFENSE_CODE", all.x=T)
   
   # Get total number of incidents
   n_incidents <- df_all %>% nrow()
   output$n_inc_str <- renderText({n_incidents})
   
-  # Load time of last query
-  last_query_time <- read_rds(query_log_filename) %>%
+  # Load time of last query ALSO FROM AWS wow
+  last_query_time <- s3readRDS(object = "query_log.rds", 
+                               bucket = aws_s3_bucket) %>%
     tail(1) %>%
     pull(query_time) %>%
     with_tz(tzone="America/New_York") %>%
