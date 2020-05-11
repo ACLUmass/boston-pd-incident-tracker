@@ -53,7 +53,7 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
   if (plot_type == "year_to_year") {
     traces_lightback <- 2
     traces_darkback <- 1
-    traces_to_hide <- 3:4
+    traces_to_hide <- 3
     
     g <- g %>%
       style(textposition = "right", traces = traces_to_hide)
