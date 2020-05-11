@@ -28,7 +28,7 @@ legend_label_fontsize = 12 #12 / 20
 year_label_fontsize = 5 #5 / 9
 
 # Define filenames and column data types
-violations_filename <- "data/violations_major_minor.csv"
+violations_filename <- "violations_major_minor.csv"
 
 # Load violation classifications
 violations <- read_csv(violations_filename, 
