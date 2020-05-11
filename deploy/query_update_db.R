@@ -13,7 +13,7 @@ library(readr)
 library(aws.s3)
 
 # Read environment vars for AWS keys
-readRenviron(".Renviron")
+readRenviron("../.Renviron")
 
 # Set up connection to S3 bucket
 aws_s3_bucket <- get_bucket("app-bpd-incidents")
