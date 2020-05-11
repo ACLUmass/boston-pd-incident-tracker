@@ -6,3 +6,4 @@ query_log.rds
 .git
 new_data_log.txt
 all_bpd_incidents_cumulative.rds
+cron_log.txt
