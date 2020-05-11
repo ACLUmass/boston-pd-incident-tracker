@@ -1,0 +1,8 @@
+exclude-deploy.txt
+query_log.rds
+.DS_Store
+.github
+.gitignore
+.git
+new_data_log.txt
+all_bpd_incidents_cumulative.rds

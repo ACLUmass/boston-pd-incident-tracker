@@ -29,4 +29,4 @@ jobs:
         echo 2 add key && echo "$DEPLOY_KEY" | ssh-add -
         echo 3 make ssh dir && mkdir -p ~/.ssh && chmod 700 ~/.ssh
         echo 4 update known hosts && echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
-        echo 5 rsyncing && rsync -rlDv -e 'ssh' --exclude-from "exclude-deploy.txt" * github@data.aclum.org:/srv/shiny-server/bpd_covid19_app_dev/
+        echo 5 rsyncing && rsync -rlDv -e 'ssh' --exclude-from "deploy/exclude-deploy.txt" deploy/* github@data.aclum.org:/home/shiny/bpd-incidents/

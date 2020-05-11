@@ -1,8 +1,7 @@
 # Data
-data/*.rds
-data/new_data_log.txt
-data/testing
-data/cron_log.txt
+deploy/*.rds
+deploy/new_data_log.txt
+deploy/cron_log.txt
 
 # Development
 dev
