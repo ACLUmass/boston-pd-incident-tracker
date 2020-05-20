@@ -13,6 +13,8 @@ library(aws.s3)
 
 source("plotly_builders.R")
 
+# Initialization --------------------------------------------------------------
+
 # Read environment vars
 readRenviron(".Renviron")
 
@@ -71,11 +73,7 @@ font_add("gtam", "www/fonts/gtamerica/GT-America-Standard-Regular.ttf",
          bold = "www/fonts/gtamerica/GT-America-Standard-Bold.ttf")
 showtext_auto()
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# UI
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# UI --------------------------------------------------------------
 ui <- fluidPage(theme = "bpd_covid19_app.css",
   
   # Use shinyjs package for dynamic enabling/disabling          
@@ -87,7 +85,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
     tags$link(rel = "icon", type = "image/png", sizes = "512x512", href = "favicon.png")
   ),
   
-  # App title ----
+  # App title
   titlePanel("Tracking Boston Police Incidents"),
   
   div(
@@ -223,16 +221,10 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
   )
 )
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Server
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Server --------------------------------------------------------------
 server <- function(input, output, session) {
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Load Data
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # Load Data --------------------------------------------------------------
   
   # Load all incidents FROM AWS, omg
   df_all <- s3readRDS(object = "all_bpd_incidents_cumulative.rds", 
@@ -275,10 +267,8 @@ server <- function(input, output, session) {
       as.character()
   })
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 🗓 2019 v. 2020 🗓 
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  
+  # 🗓 2019 v. 2020 🗓 --------------------------------------------------------
+
   isolate({
     updateDateRangeInput(session, "y2y_date", 
                          start = first_date_to_plot, end = last_date_to_plot, 
@@ -337,10 +327,8 @@ server <- function(input, output, session) {
     
   })
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 🕰 Incidents by Group v. Time 🕰
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  
+  # 🕰 Incidents by Group v. Time 🕰 ------------------------------------------
+
   # Connect modal to incident info link
   observeEvent(input$modal_incidents, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
@@ -463,9 +451,7 @@ server <- function(input, output, session) {
     
   })
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 🌍 Incidents by Location 🌍
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # 🌍 Incidents by Location 🌍 -----------------------------------------------
   
   # Plot map
   output$synced_maps <- renderUI({
@@ -534,10 +520,8 @@ server <- function(input, output, session) {
     
   })
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # 🙅🏽 Major & Minor Incidents v. Time 🤷🏽
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  
+  # 🙅🏽 Major & Minor Incidents v. Time 🤷🏽 -------------------------------------
+
   isolate({
     updateDateRangeInput(session, "maj_min_date", 
                          start = first_date_to_plot, end = last_date_to_plot, 
@@ -599,9 +583,8 @@ server <- function(input, output, session) {
     
   })
   
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # ⬇️ Download CSV ⬇️
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # ⬇️ Download CSV ⬇️ --------------------------------------------------------
+  
   observeEvent(input$link_to_download, {
     updateTabsetPanel(session, "panels", "Download Data")
   })
