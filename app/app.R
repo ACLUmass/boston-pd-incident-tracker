@@ -503,7 +503,9 @@ server <- function(input, output, session) {
     
     output$n_incs_inc1 <- renderText({
       df_by_incident %>%
-        filter(incident_group == grps_to_plot[1]) %>%
+        filter(date <= last_date_to_plot,
+               date >= first_date_to_plot,
+               incident_group == grps_to_plot[1]) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -511,8 +513,10 @@ server <- function(input, output, session) {
     output$inc1_type <- renderText({grps_to_plot[1]})
     
     output$n_incs_inc2 <- renderText({
-      df_by_incident %>%
-        filter(incident_group == grps_to_plot[2]) %>%
+      df_by_incident %>% 
+        filter(date <= last_date_to_plot,
+               date >= first_date_to_plot,
+               incident_group == grps_to_plot[2]) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -521,7 +525,9 @@ server <- function(input, output, session) {
     
     output$n_incs_inc3 <- renderText({
       df_by_incident %>%
-        filter(incident_group == grps_to_plot[3]) %>%
+        filter(date <= last_date_to_plot,
+               date >= first_date_to_plot,
+               incident_group == grps_to_plot[3]) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
