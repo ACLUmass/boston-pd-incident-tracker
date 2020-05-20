@@ -572,48 +572,61 @@ server <- function(input, output, session) {
     output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
     
     # Create 2019 map
-    map_2019 <- df_to_map_clr %>%
+    df_to_map_2019 <- df_to_map_clr %>%
       filter(!is.na(color),
              date >= ymd(gsub("\\d{4}", "2019", first_date_to_plot)),
-             date <= ymd(gsub("\\d{4}", "2019", last_date_to_plot))) %>%
-    leaflet(options = leafletOptions(attributionControl = T)) %>%
-      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
-      addCircleMarkers(lng = ~Long, lat = ~Lat,
-                       label = ~lapply(labs, HTML),
-                       stroke=F, fillOpacity=.4, radius=2.5,
-                       color=~colo = , group="circle_marks") %>%
-      addEasyButton(easyButton(
-        icon="fa-home", title="Reset",
-        onClick=JS("function(btn, map){ 
-                   var groupLayer = map.layerManager.getLayerGroup('circle_marks');
-                   map.fitBounds(groupLayer.getBounds());
-               }"))) %>%
-      addLegend(position = "bottomright",
-                colors = colors,
-                labels=label = )
+             date <= ymd(gsub("\\d{4}", "2019", last_date_to_plot)))
+    
+    map_2019 <- df_to_map_2019 %>%
+      leaflet(options = leafletOptions(attributionControl = T)) %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas)
+    
+    if (nrow(df_to_map_2019) != 0) {
+      map_2019 <- map_2019 %>%
+          addCircleMarkers(data = df_to_map_2019,
+                           lng = ~Long, lat = ~Lat,
+                           label = ~lapply(labs, HTML),
+                           stroke=F, fillOpacity=.4, radius=2.5,
+                           color = ~color, group="circle_marks") %>%
+          addEasyButton(easyButton(
+            icon="fa-home", title="Reset",
+            onClick=JS("function(btn, map){ 
+                       var groupLayer = map.layerManager.getLayerGroup('circle_marks');
+                       map.fitBounds(groupLayer.getBounds());
+                   }"))) %>%
+          addLegend(position = "bottomright",
+                    colors = colors,
+                    labels = labels)
+    }
     
     # Create 2020 map
-    map_2020 <- df_to_map_clr %>%
+    df_to_map_2020 <- df_to_map_clr %>%
       filter(!is.na(color),
              date <= last_date_to_plot,
-             date >= first_date_to_plot) %>%
-    leaflet(options = leafletOptions(attributionControl = T)) %>%
-      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
-      addCircleMarkers(lng = ~Long, lat = ~Lat, 
-                       label = ~lapply(labs, HTML),
-                       stroke=F, fillOpacity=.4, radius=2.5,
-                       color=~colo = , group="circle_marks") %>%
-      addEasyButton(easyButton(
-        icon="fa-home", title="Reset",
-        onClick=JS("function(btn, map){ 
-                   var groupLayer = map.layerManager.getLayerGroup('circle_marks');
-                   map.fitBounds(groupLayer.getBounds());
-               }"))) %>%
-      addLegend(position = "bottomright",
-                colors = colors,
-                labels=label = 
-      )
+             date >= first_date_to_plot)
     
+    map_2020 <- df_to_map_2020 %>%
+      leaflet(options = leafletOptions(attributionControl = T)) %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas)
+    
+    if (nrow(df_to_map_2020) != 0) {
+      map_2020 <- map_2020 %>%
+        addCircleMarkers(data = df_to_map_2020,
+                         lng = ~Long, lat = ~Lat, 
+                         label = ~lapply(labs, HTML),
+                         stroke=F, fillOpacity=.4, radius=2.5,
+                         color = ~color, group="circle_marks") %>%
+        addEasyButton(easyButton(
+          icon="fa-home", title="Reset",
+          onClick=JS("function(btn, map){ 
+                     var groupLayer = map.layerManager.getLayerGroup('circle_marks');
+                     map.fitBounds(groupLayer.getBounds());
+                 }"))) %>%
+        addLegend(position = "bottomright",
+                  colors = colors,
+                  labels = labels)
+    }
+      
     sync(map_2019, map_2020)
     
   })
