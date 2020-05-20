@@ -252,20 +252,43 @@ server <- function(input, output, session) {
   
   earliest_date <- min(df_all$date, na.rm=T)
   
+  # Calculate percentage of incidents with location
+  output$percent_w_loc <- renderText({
+    round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1) %>%
+      as.character()
+  })
+  
+  # Organize by incident/group
+  all_df_all <- df_all %>%
+    group_by(date) %>%
+    summarize(n = n()) %>%
+    mutate(incident_group = "All")
+  
+  df_by_incidentgroup <- df_all %>%
+    group_by(date, incident_group) %>%
+    summarize(n = n())
+  
+  df_by_incident <- df_all %>%
+    group_by(date = date, desc) %>%
+    summarize(n = n()) %>%
+    rename(incident_group = desc) %>%
+    ungroup()%>%
+    bind_rows(all_df_all) %>%
+    bind_rows(df_by_incidentgroup)
+  
+  # Fill in dates where there are none of a given incident 
+  df_by_incident <- tidyr::complete(df_by_incident, incident_group, date,
+                                    fill=list(n=0))
+  
   # Filter for mapping
   df_to_map <- df_all %>%
     filter(!is.na(Long)) %>%
     mutate(Long=as.numeric(Long), Lat = as.numeric(Lat),
            labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
                                format="%A %B %e, %Y at %I:%M %p"), 
+                        incident_group,
                         desc, sep="<br/>")) %>%
     filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
-  
-  # Calculate percentage of incidents with location
-  output$percent_w_loc <- renderText({
-    round((n_incidents - df_all %>% filter(is.na(Long)) %>% nrow()) / n_incidents * 100, 1) %>%
-      as.character()
-  })
   
   # 🗓 2019 v. 2020 🗓 --------------------------------------------------------
 
@@ -412,27 +435,6 @@ server <- function(input, output, session) {
     last_date_to_plot <- input$inc_type_date[2]
     
     grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
-    
-    all_df_all <- df_all %>%
-      group_by(date) %>%
-      summarize(n = n()) %>%
-      mutate(incident_group = "All")
-    
-    df_by_incidentgroup <- df_all %>%
-      group_by(date, incident_group) %>%
-      summarize(n = n())
-    
-    df_by_incident <- df_all %>%
-      group_by(date = date, desc) %>%
-      summarize(n = n()) %>%
-      rename(incident_group = desc) %>%
-      ungroup()%>%
-      bind_rows(all_df_all) %>%
-      bind_rows(df_by_incidentgroup)
-  
-    # Fill in dates where there are none of a given incident 
-    df_by_incident <- tidyr::complete(df_by_incident, incident_group, date,
-                                      fill=list(n=0))
     
     g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
