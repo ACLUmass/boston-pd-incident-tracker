@@ -113,6 +113,12 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                wellPanel(id="internal_well",
                          p("Select date range in 2020 to compare to 2019:"),
                          dateRangeInput("y2y_date", label="")),
+               splitLayout(
+                 div(h2(textOutput("n_incs_2019"), align="center"),
+                     p("Police incidents during selected date range in 2019", align="center")),
+                 div(h2(textOutput("n_incs_2020"), align="center"),
+                     p("Police incidents during selected date range in 2020", align="center"))
+               ),
                withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Incidents by Type Over Time",
@@ -143,6 +149,17 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  ),
                  p("Select date range to plot:"),
                  dateRangeInput("inc_type_date", label="")
+               ),
+               splitLayout(
+                 div(h2(textOutput("n_incs_inc1"), align="center"),
+                     p(textOutput("inc1_type", inline=T),
+                       "incidents during selected date range", align="center")),
+                 div(h2(textOutput("n_incs_inc2"), align="center"),
+                     p(textOutput("inc2_type", inline=T),
+                       "incidents during selected date range", align="center")),
+                 div(h2(textOutput("n_incs_inc3"), align="center"),
+                     p(textOutput("inc3_type", inline=T),
+                       "incidents during selected date range", align="center"))
                ),
                withSpinner(plotlyOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
@@ -204,6 +221,12 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                          br(), br(),
                          p("Select date range to plot:"),
                          dateRangeInput("maj_min_date", label="")),
+               splitLayout(
+                 div(h2(textOutput("n_incs_maj"), align="center"),
+                     p("Major incidents during selected date range", align="center")),
+                 div(h2(textOutput("n_incs_min"), align="center"),
+                     p("Minor incidents during selected date range", align="center"))
+               ),
                withSpinner(plotlyOutput("major_minor_plot"), 
                            type=4, color="#b5b5b5", size=0.5)),
       
@@ -351,6 +374,22 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(year = 2020) %>%
       bind_rows(df_last_year)
+  
+    output$n_incs_2019 <- renderText({
+      data_2019_2020 %>% 
+        filter(year == 2019) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+      })
+   
+    output$n_incs_2020 <- renderText({
+      data_2019_2020 %>% 
+        filter(year == 2020) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
     
     g <- data_2019_2020 %>%
     ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
@@ -461,6 +500,33 @@ server <- function(input, output, session) {
     last_date_to_plot <- input$inc_type_date[2]
     
     grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())$value
+    
+    output$n_incs_inc1 <- renderText({
+      df_by_incident %>%
+        filter(incident_group == grps_to_plot[1]) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
+    output$inc1_type <- renderText({grps_to_plot[1]})
+    
+    output$n_incs_inc2 <- renderText({
+      df_by_incident %>%
+        filter(incident_group == grps_to_plot[2]) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
+    output$inc2_type <- renderText({grps_to_plot[2]})
+    
+    output$n_incs_inc3 <- renderText({
+      df_by_incident %>%
+        filter(incident_group == grps_to_plot[3]) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
+    output$inc3_type <- renderText({grps_to_plot[3]})
     
     g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
@@ -648,9 +714,27 @@ server <- function(input, output, session) {
       as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .01
 
     data_major_minor <- df_all %>%
-      filter(date <= last_date_to_plot) %>%
+      filter(date <= last_date_to_plot,
+             date >= first_date_to_plot) %>%
       group_by(date, Lauren_says_minor) %>%
       summarize(n = n())
+    
+    # Counts of major & minor in given date range
+    output$n_incs_maj <- renderText({
+      data_major_minor %>%
+        filter(Lauren_says_minor==F) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
+    
+    output$n_incs_min <- renderText({
+      data_major_minor %>%
+        filter(Lauren_says_minor==T) %>%
+        pull(n) %>%
+        sum() %>%
+        format(big.mark = ",")
+    })
     
     labels_too_close <- data_major_minor %>%
       filter(date == last_date_to_plot) %>%

@@ -90,6 +90,11 @@ h2 {
   overflow: visible;
 }
 
+/* Fix text not warpping issue */
+.shiny-split-layout p {
+  white-space: normal;
+}
+
 /* Make sure table filters are wide enough */
 #df_table input {
     width: 100px !important;
