@@ -142,16 +142,41 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                    )
                  ),
                  p("Select date range to plot:"),
-                 dateRangeInput("inc_type_date", label="")),
+                 dateRangeInput("inc_type_date", label="")
+               ),
                withSpinner(plotlyOutput("incidents_group_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
       
-      tabPanel("Incident Locations", 
+      tabPanel("Incident Locations",
                wellPanel(id="internal_well",
-                         p("Select date range in 2020 to compare to 2019:"),
-                         dateRangeInput("loc_date", label="",
-                                        start = today - months(1) - days(1), end = today - days(1),
-                                        min = "2015-06-15", max = today - days(1))
+                 p("Select up to three kinds of incidents to plot versus time.", 
+                   actionLink("modal_incidents2", label = NULL, icon=icon("info-circle"))),
+                 em("Category:", style="display: inline-block; width: 100px;"),
+                 span(style="display: inline-block; width: calc(100% - 110px);",
+                      splitLayout(
+                        selectInput("select_incidentgroup_map1", label = NULL, choices = group_choices,
+                                    selected = "Verbal Dispute", multiple=FALSE),
+                        selectInput("select_incidentgroup_map2", label = NULL, choices = group_choices,
+                                    selected = "Motor Vehicle", multiple=FALSE),
+                        selectInput("select_incidentgroup_map3", label = NULL, choices = group_choices,
+                                    selected = "Investigations", multiple=FALSE)
+                      )
+                 ),
+                 em("Sub-Category:", style="display: inline-block; width: 100px;"),
+                 span(style="display: inline-block; width: calc(100% - 110px);",
+                      splitLayout(
+                        selectInput("select_incident_map1", label = NULL, choices = group_choices,
+                                    selected = "All", multiple=FALSE),
+                        selectInput("select_incident_map2", label = NULL, choices = group_choices,
+                                    selected = "All", multiple=FALSE),
+                        selectInput("select_incident_map3", label = NULL, choices = group_choices,
+                                    selected = "All", multiple=FALSE)
+                      )
+                 ),
+                 p("Select date range in 2020 to compare to 2019:"),
+                 dateRangeInput("loc_date", label="",
+                                start = today - months(1) - days(1), end = today - days(1),
+                                min = "2015-06-15", max = today - days(1))
                ),
                uiOutput("range_warning"),
                splitLayout(align="center", h2("2019"), h2("2020")),
@@ -360,11 +385,13 @@ server <- function(input, output, session) {
   # Define helper function to update incident dropdown options when
   # the incident group is updated
   update_incs_by_group <- function(select_input) {
-    selector_name <- deparse(substitute(select_input))
-    selector_name <- strsplit(selector_name, "$", fixed=T)[[1]] %>% tail(1)
-    n_selector <- substr(selector_name, nchar(selector_name), nchar(selector_name))
-  
-    inc_selector_name <- paste0("select_incident", n_selector)
+    grp_selector_name <- deparse(substitute(select_input))
+    grp_selector_name <- strsplit(grp_selector_name, "$", fixed=T)[[1]] %>% tail(1)
+    n_selector <- substr(grp_selector_name, 
+                         nchar(grp_selector_name), nchar(grp_selector_name))
+    
+    inc_selector_name <- sub(".$", n_selector, grp_selector_name)
+    inc_selector_name <- sub("group", "", inc_selector_name)
     
     group_name <- select_input
     
@@ -391,20 +418,19 @@ server <- function(input, output, session) {
   
   # Helper function to create list of values to plot
   get_groups_to_plot <- function(grp_list, inc_list) {
-    grp_to_plot <- c()
+    grp_to_plot <- data.frame(value=character(), type=character(), 
+                              stringsAsFactors=FALSE)
     for (i in 1:3) {
       grp <- grp_list[i]
       inc <- inc_list[i]
       
       if (grp %in% c("--", "All")) {
-        grp <- grp
+        grp_to_plot[i,] <- list(value=grp,type= "group")
       } else if (inc == "All") {
-        grp <- grp
+        grp_to_plot[i,] <- list(value=grp,type= "group")
       } else {
-        grp <- inc
+        grp_to_plot[i,] <- list(value=inc,type= "incident")
       }
-      
-      grp_to_plot[i] <- grp
     }
     return(grp_to_plot)
   }
@@ -434,7 +460,7 @@ server <- function(input, output, session) {
     first_date_to_plot <- input$inc_type_date[1]
     last_date_to_plot <- input$inc_type_date[2]
     
-    grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())
+    grps_to_plot <- get_groups_to_plot(inc_grps_to_plot(), incs_to_plot())$value
     
     g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
@@ -455,9 +481,68 @@ server <- function(input, output, session) {
   
   # 🌍 Incidents by Location 🌍 -----------------------------------------------
   
+  # Connect modal to incident info link
+  observeEvent(input$modal_incidents2, {
+    showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  
+  # Update individual incident dropdowns when group is changed
+  observe({update_incs_by_group(input$select_incidentgroup_map1)})
+  observe({update_incs_by_group(input$select_incidentgroup_map2)})
+  observe({update_incs_by_group(input$select_incidentgroup_map3)})
+  
+  # Determine which incidents/groups to map
+  inc_grps_to_map <- reactive({
+    c(input$select_incidentgroup_map1, 
+      input$select_incidentgroup_map2,
+      input$select_incidentgroup_map3)
+  })
+  incs_to_map <- reactive({
+    c(input$select_incident_map1, 
+      input$select_incident_map2,
+      input$select_incident_map3)
+  })
+
   # Plot map
   output$synced_maps <- renderUI({
     
+    # Determine incident groups/types to map
+    grps_to_map <- get_groups_to_plot(inc_grps_to_map(), incs_to_map())
+    
+    if ("All" %in% grps_to_map$value) {
+      grps_filter <- df_all$incidentgroup %>% unique()
+      incs_filter <- df_all$desc %>% unique()
+      
+      df_to_map_clr <- df_to_map %>%
+        mutate(color = "#0055aa")
+      
+      colors <- "#0055aa"
+      labels <- "All"
+    } else {
+      grps_filter <- grps_to_map[grps_to_map$type == "group",]$value
+      incs_filter <- grps_to_map[grps_to_map$type == "incident",]$value
+      
+      df_to_map_clr <- df_to_map %>%
+        mutate(color = ifelse(incident_group == grps_to_map$value[1] | 
+                                desc == grps_to_map$value[1], "#0055aa",
+                              ifelse(incident_group == grps_to_map$value[2] | 
+                                       desc == grps_to_map$value[2], "#ef404d",
+                                     ifelse(incident_group == grps_to_map$value[3] | 
+                                              desc == grps_to_map$value[3], "#fbb416", NA))))
+                                            
+      
+      colors <- c("#0055aa", "#ef404d", "#fbb416")
+      labels <- grps_to_map$value
+      
+      # Check for empty labels
+      i_empty <- which(labels %in% "--")
+      if (length(i_empty) != 0) {
+        colors <- colors[i_empty * -1]
+        labels <- labels[i_empty * -1]
+      }
+    }
+    
+    # Determine date range to map
     first_date_to_plot <- input$loc_date[1]
     last_date_to_plot <- input$loc_date[2]
     
@@ -486,37 +571,48 @@ server <- function(input, output, session) {
     output$first_date_str <- renderText({format(first_date_to_plot, format="%B %e")})
     output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
     
-    map_2019 <- df_to_map %>%
-      filter(date >= ymd(gsub("\\d{4}", "2019", first_date_to_plot)),
+    # Create 2019 map
+    map_2019 <- df_to_map_clr %>%
+      filter(!is.na(color),
+             date >= ymd(gsub("\\d{4}", "2019", first_date_to_plot)),
              date <= ymd(gsub("\\d{4}", "2019", last_date_to_plot))) %>%
     leaflet(options = leafletOptions(attributionControl = T)) %>%
       addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
       addCircleMarkers(lng = ~Long, lat = ~Lat,
                        label = ~lapply(labs, HTML),
-                       stroke=F, fillOpacity=.2, radius=2.5,
-                       color="#0055aa", group="circle_marks") %>%
+                       stroke=F, fillOpacity=.4, radius=2.5,
+                       color=~colo = , group="circle_marks") %>%
       addEasyButton(easyButton(
         icon="fa-home", title="Reset",
         onClick=JS("function(btn, map){ 
                    var groupLayer = map.layerManager.getLayerGroup('circle_marks');
                    map.fitBounds(groupLayer.getBounds());
-               }")))
+               }"))) %>%
+      addLegend(position = "bottomright",
+                colors = colors,
+                labels=label = )
     
-    map_2020 <- df_to_map %>%
-      filter(date <= last_date_to_plot,
+    # Create 2020 map
+    map_2020 <- df_to_map_clr %>%
+      filter(!is.na(color),
+             date <= last_date_to_plot,
              date >= first_date_to_plot) %>%
     leaflet(options = leafletOptions(attributionControl = T)) %>%
       addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
       addCircleMarkers(lng = ~Long, lat = ~Lat, 
                        label = ~lapply(labs, HTML),
-                       stroke=F, fillOpacity=.2, radius=2.5,
-                       color="#0055aa", group="circle_marks") %>%
+                       stroke=F, fillOpacity=.4, radius=2.5,
+                       color=~colo = , group="circle_marks") %>%
       addEasyButton(easyButton(
         icon="fa-home", title="Reset",
         onClick=JS("function(btn, map){ 
                    var groupLayer = map.layerManager.getLayerGroup('circle_marks');
                    map.fitBounds(groupLayer.getBounds());
-               }")))
+               }"))) %>%
+      addLegend(position = "bottomright",
+                colors = colors,
+                labels=label = 
+      )
     
     sync(map_2019, map_2020)
     
