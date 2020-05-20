@@ -121,21 +121,27 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                wellPanel(id="internal_well",
                  p("Select up to three kinds of incidents to plot versus time.", 
                    actionLink("modal_incidents", label = NULL, icon=icon("info-circle"))),
-                 splitLayout(
-                   selectInput("select_incidentgroup1", label = NULL, choices = group_choices,
-                               selected = "All", multiple=FALSE),
-                   selectInput("select_incidentgroup2", label = NULL, choices = group_choices,
-                               selected = "Motor Vehicle", multiple=FALSE),
-                   selectInput("select_incidentgroup3", label = NULL, choices = group_choices,
-                               selected = "Investigations", multiple=FALSE)
+                 em("Category:", style="display: inline-block; width: 100px;"),
+                 span(style="display: inline-block; width: calc(100% - 110px);",
+                   splitLayout(
+                     selectInput("select_incidentgroup1", label = NULL, choices = group_choices,
+                                 selected = "All", multiple=FALSE),
+                     selectInput("select_incidentgroup2", label = NULL, choices = group_choices,
+                                 selected = "Motor Vehicle", multiple=FALSE),
+                     selectInput("select_incidentgroup3", label = NULL, choices = group_choices,
+                                 selected = "Investigations", multiple=FALSE)
+                   )
                  ),
-                 splitLayout(
-                   selectInput("select_incident1", label = NULL, choices = group_choices,
-                               selected = "All", multiple=FALSE),
-                   selectInput("select_incident2", label = NULL, choices = group_choices,
-                               selected = "All", multiple=FALSE),
-                   selectInput("select_incident3", label = NULL, choices = group_choices,
-                               selected = "All", multiple=FALSE)
+                 em("Sub-Category:", style="display: inline-block; width: 100px;"),
+                 span(style="display: inline-block; width: calc(100% - 110px);",
+                   splitLayout(
+                     selectInput("select_incident1", label = NULL, choices = group_choices,
+                                 selected = "All", multiple=FALSE),
+                     selectInput("select_incident2", label = NULL, choices = group_choices,
+                                 selected = "All", multiple=FALSE),
+                     selectInput("select_incident3", label = NULL, choices = group_choices,
+                                 selected = "All", multiple=FALSE)
+                   )
                  ),
                  p("Select date range to plot:"),
                  dateRangeInput("inc_type_date", label="")),
