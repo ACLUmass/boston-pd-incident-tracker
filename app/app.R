@@ -93,7 +93,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  
       tabPanel("About", 
                h4("Explore Boston PD Incidents"),
-               p(paste("View plots in the different tabs to track the behavior of the",
+               p(paste("View plots in the different tabs to track the activity of the",
                        "Boston Police Department over time, including the frequency and location",
                        "of specific incident types.")),
                
