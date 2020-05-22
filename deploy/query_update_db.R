@@ -91,42 +91,25 @@ fix_codes <- function(df) {
     str_extract("(?<=\\d{2}\\s)\\d*(?=\\slines)") %>%
     as.numeric()
   
-  # Define query parameters
-  base_url <- "https://data.boston.gov/api/3/action/"
-  search_type <- "datastore_search"  # "datastore_search_sql"
-  db_id <- "12cb3883-56f5-47de-afa5-3b1cf61b257b"
+  # Define Boston crime incidents page URL
+  boston_crime_incidents_url <- "https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system"
+  
+  # Scrape download button link from page
+  url_to_temp_csv <- read_html(boston_crime_incidents_url) %>%
+    html_nodes(".resource-list") %>%
+    html_nodes(".btn-group") %>% 
+    `[[`(1) %>%
+    html_nodes(".btn") %>%
+    `[[`(2) %>%
+    html_attr("href")
   
   # Set query time
   query_time = now('America/New_York')
   
-  n <- 0
-  total_rows <- Inf
-  df_all <- data.frame()
-  while (n < total_rows) {
-    request <- GET(url = paste(base_url, search_type, sep=""), 
-                   query = list(
-                     resource_id = db_id,
-                     # filters = '{"YEAR": "2019"}',
-                     limit=32000,
-                     offset = n)
-    )
-    print(paste("Made a query to:", request$url))
-    
-    response_json <- fromJSON(content(request, as = "text", flatten = TRUE))
-    
-    print(paste("Success?", response_json$success))
-    
-    if (response_json$success == TRUE) {
-      n <- n + 32000
-      total_rows <- response_json$result$total
-      
-      df <- response_json$result$records
-      df_all <- rbind(df_all, df)
-    } else {
-      stop('HTTP request failed.')
-    }
-  }
-  
+  # Download CSV file as df
+  df_all <- read_csv(url_to_temp_csv, 
+                     col_types = parse_query_db)
+  print(paste("Made a query to:", url_to_temp_csv))
   n_new <- nrow(df_all)
   
   # Check if the number of incidents is either the same or greater than
