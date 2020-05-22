@@ -57,6 +57,27 @@ pipe_print <- function(data, message = "", print_data = F) {
 }
 
 get_all_incident_data <- function() {
+# Function to fix known issues with offense descriptions & white space --------
+
+fix_codes <- function(df) {
+  df %>%
+    # Fix typos in offense descriptions
+    mutate(OFFENSE_DESCRIPTION = case_when(
+      OFFENSE_DESCRIPTION == "ANNOYING AND ACCOSTIN" ~ "ANNOYING AND ACCOSTING",
+      OFFENSE_DESCRIPTION == "DRUGS - POSS CLASS E INTENT TO MF DIST DISP" ~ "DRUGS - POSS CLASS E - INTENT TO MFR DIST DISP",
+      T ~ OFFENSE_DESCRIPTION
+    )) %>%
+    # Fix descriptions with the wrong code
+    mutate(OFFENSE_CODE = case_when(
+      OFFENSE_DESCRIPTION == "DRUGS - POSS CLASS B - INTENT TO MFR DIST DISP" ~ 1843,
+      OFFENSE_DESCRIPTION == "DRUGS - POSS CLASS E - INTENT TO MFR DIST DISP" ~ 1850,
+      OFFENSE_DESCRIPTION == "VAL - OPERATING AFTER REV/SUSP." ~ 2907,
+      T ~ OFFENSE_CODE
+    ))%>%
+    # Fix double white space & trailing white space
+    mutate_if(is.character, str_squish)
+}
+
 # Function to get all currently available Boston Police incident data ---------
 
   
@@ -159,11 +180,16 @@ merge_into_previous <- function (old_df, new_df, datetime) {
   print(paste("Loaded old DF.", nrow(old_df), "incidents found."))
   print(paste("Loaded new DF.", nrow(new_df), "incidents found."))
   
+  # Clean old DF, just in case
+  old_df <- old_df %>%
+    fix_codes()
+  
   # Clean new DF to match columns of old DF
   df <- new_df %>% 
     mutate_at(vars(REPORTING_AREA, OFFENSE_CODE, YEAR, MONTH, HOUR, Long, Lat), 
               as.numeric) %>%
     mutate(queried = datetime) %>%
+    fix_codes() %>%
     select(-contains("_id", ignore.case = F), 
            -contains("full_text", ignore.case = F), 
            -OFFENSE_CODE_GROUP, -UCR_PART) %>%
