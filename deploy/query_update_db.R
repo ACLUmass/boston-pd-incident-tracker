@@ -56,7 +56,6 @@ pipe_print <- function(data, message = "", print_data = F) {
   data
 }
 
-get_all_incident_data <- function() {
 # Function to fix known issues with offense descriptions & white space --------
 
 fix_codes <- function(df) {
@@ -80,6 +79,7 @@ fix_codes <- function(df) {
 
 # Function to get all currently available Boston Police incident data ---------
 
+get_all_incident_data <- function(testing=F) {
   
   # Get data log from AWS
   save_object(new_data_log_filename, bucket = aws_s3_bucket, 
@@ -122,33 +122,36 @@ fix_codes <- function(df) {
   df_all <- df_all %>%
     mutate(OCCURRED_ON_DATE = ymd_hms(OCCURRED_ON_DATE))
   
-  
-  # Update log to reflect latest query
-  print("Updating query log")
-  query_history <- readRDS(query_log_filename) %>%
-    rbind(data.frame(query_time=query_time))
-  # Save locally
-  saveRDS(query_history, query_log_filename)
-  # Save to AWS
-  aws_log <- s3saveRDS(query_history, bucket = aws_s3_bucket, 
-                       object = query_log_filename)
-  if (aws_log) {
-    print("Uploaded query log to AWS S3 bucket.")
-  } else {
-    warning("Failed to upload query log to AWS.")
-  }
-  
-  # Update log to reflect if there are new data
-  print("Updating data length log")
-  line = paste(query_time, n_new, "lines")
-  # Append to file locally
-  write(line, file = new_data_log_filename, append=TRUE)
-  # Save to AWS
-  aws_length <- put_object(new_data_log_filename, bucket = aws_s3_bucket)
-  if (aws_length) {
-    print("Uploaded data length log to AWS S3 bucket.")
-  } else {
-    warning("Failed to upload data length log to AWS.")
+  if (!testing) {
+    
+    # Update log to reflect latest query
+    print("Updating query log")
+    query_history <- readRDS(query_log_filename) %>%
+      rbind(data.frame(query_time=query_time))
+    # Save locally
+    saveRDS(query_history, query_log_filename)
+    # Save to AWS
+    aws_log <- s3saveRDS(query_history, bucket = aws_s3_bucket, 
+                         object = query_log_filename)
+    if (aws_log) {
+      print("Uploaded query log to AWS S3 bucket.")
+    } else {
+      warning("Failed to upload query log to AWS.")
+    }
+    
+    # Update log to reflect if there are new data
+    print("Updating data length log")
+    line = paste(query_time, n_new, "lines")
+    # Append to file locally
+    write(line, file = new_data_log_filename, append=TRUE)
+    # Save to AWS
+    aws_length <- put_object(new_data_log_filename, bucket = aws_s3_bucket)
+    if (aws_length) {
+      print("Uploaded data length log to AWS S3 bucket.")
+    } else {
+      warning("Failed to upload data length log to AWS.")
+    }
+    
   }
 
   return(list("query_time" = query_time, 
@@ -156,9 +159,9 @@ fix_codes <- function(df) {
   
 }
 
-merge_into_previous <- function (old_df, new_df, datetime) {
 # Function to integrate new query into existing database ----------------------
 
+merge_into_previous <- function (old_df, new_df, queried_datetime) {
   
   print(paste("Loaded old DF.", nrow(old_df), "incidents found."))
   print(paste("Loaded new DF.", nrow(new_df), "incidents found."))
@@ -171,8 +174,8 @@ merge_into_previous <- function (old_df, new_df, datetime) {
   df <- new_df %>% 
     mutate_at(vars(REPORTING_AREA, OFFENSE_CODE, YEAR, MONTH, HOUR, Long, Lat), 
               as.numeric) %>%
-    mutate(queried = datetime) %>%
     fix_codes() %>%
+    mutate(queried = queried_datetime) %>%
     select(-contains("_id", ignore.case = F), 
            -contains("full_text", ignore.case = F), 
            -OFFENSE_CODE_GROUP, -UCR_PART) %>%
@@ -180,8 +183,8 @@ merge_into_previous <- function (old_df, new_df, datetime) {
     mutate(OCCURRED_ON_DATE = force_tz(OCCURRED_ON_DATE, tzone="America/New_York"))
   
   # Calculate how many incidents we expect to see
-  old_incidents <- old_df %>% select(INCIDENT_NUMBER, OFFENSE_CODE) %>% unique()
-  new_incidents <- df %>% select(INCIDENT_NUMBER, OFFENSE_CODE) %>% unique()
+  old_incidents <- old_df %>% select(INCIDENT_NUMBER, OFFENSE_DESCRIPTION) %>% unique()
+  new_incidents <- df %>% select(INCIDENT_NUMBER, OFFENSE_DESCRIPTION) %>% unique()
   correct_n_incidents <- rbind(old_incidents, new_incidents) %>%
     filter_all(all_vars(!is.na(.))) %>% # remove all-NA entries
     unique() %>% 
@@ -266,11 +269,11 @@ if (!interactive()) {
   
   # Query DB for new entries
   query <- get_all_incident_data()
-  datetime <- format(query$query_time, format="%Y%m%d_%H%M")
+  queried_datetime <- format(query$query_time, format="%Y%m%d_%H%M")
   
   # Add new query results into DB
   df_all_combined <- merge_into_previous(
-    old_df, query$df_all, datetime
+    old_df, query$df_all, queried_datetime
   )
   
   # Save out locally!
