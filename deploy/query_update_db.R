@@ -12,6 +12,8 @@ library(jsonlite)
 library(readr)
 library(aws.s3)
 
+# Initialization --------------------------------------------------------------
+
 # Read environment vars for AWS keys
 readRenviron("../.Renviron")
 
@@ -44,9 +46,8 @@ parse_query_db <- cols(
   Location = col_character()
 )
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Helper function: pipe-print
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Helper function: pipe-print -------------------------------------------------
+
 pipe_print <- function(data, message = "", print_data = F) {
   print(message)
   if (print_data) {
@@ -55,10 +56,9 @@ pipe_print <- function(data, message = "", print_data = F) {
   data
 }
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Function to get all currently available Boston Police incident data
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 get_all_incident_data <- function() {
+# Function to get all currently available Boston Police incident data ---------
+
   
   # Get data log from AWS
   save_object(new_data_log_filename, bucket = aws_s3_bucket, 
@@ -152,10 +152,9 @@ get_all_incident_data <- function() {
   
 }
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Function to integrate new query into existing database
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 merge_into_previous <- function (old_df, new_df, datetime) {
+# Function to integrate new query into existing database ----------------------
+
   
   print(paste("Loaded old DF.", nrow(old_df), "incidents found."))
   print(paste("Loaded new DF.", nrow(new_df), "incidents found."))
@@ -243,9 +242,8 @@ merge_into_previous <- function (old_df, new_df, datetime) {
   return(df_all_combined)
 }
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# if __name__ == "__main__":
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# if __name__ == "__main__": --------------------------------------------------
+
 if (!interactive()) {
   # Load existing DB from AWS
   old_df <- s3readRDS(db_filename, bucket = aws_s3_bucket)
