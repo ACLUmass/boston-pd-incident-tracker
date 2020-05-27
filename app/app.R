@@ -112,13 +112,24 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Year-to-Year Comparison", 
                wellPanel(id="internal_well",
+                         p("Select one kind of incident to plot:", 
+                           actionLink("modal_incidents3", label = NULL, icon=icon("info-circle"))),
+                         splitLayout(
+                            selectInput("select_incidentgroup_yr2yr", "CATEGORY", 
+                                        choices = tail(group_choices, length(group_choices) - 1),
+                                            selected = "All", multiple=FALSE),
+                            selectInput("select_incident_yr2yr","SUB-CATEGORY", choices = group_choices,
+                                            selected = "--", multiple=FALSE)
+                            ),
                          p("Select date range in 2020 to compare to 2019:"),
                          dateRangeInput("y2y_date", label="")),
                splitLayout(
                  div(h2(textOutput("n_incs_2019"), align="center"),
-                     p("Police incidents during selected date range in 2019", align="center")),
+                     p(textOutput("yr2yr_type", inline=T),
+                       "incidents during selected date range in 2019", align="center")),
                  div(h2(textOutput("n_incs_2020"), align="center"),
-                     p("Police incidents during selected date range in 2020", align="center"))
+                     p(textOutput("yr2yr_type1", inline=T),
+                       "incidents during selected date range in 2020", align="center"))
                ),
                withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
@@ -355,15 +366,46 @@ server <- function(input, output, session) {
                          min = ymd(20200101), max = last_date_to_plot)
   })
   
+  # Connect modal to incident info link
+  observeEvent(input$modal_incidents3, {
+    showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  
+  # Update individual incident dropdowns when group is changed
+  observe({update_incs_by_group(input$select_incidentgroup_yr2yr)})
+  
   output$year_to_year_plot <- renderPlotly({
     
+    # Determine incident groups/types to plot
+    grps_to_plot_yr2yr <- get_groups_to_plot(input$select_incidentgroup_yr2yr, 
+                                             input$select_incident_yr2yr)
+    output$yr2yr_type <- renderText({grps_to_plot_yr2yr$value})
+    output$yr2yr_type1 <- renderText({grps_to_plot_yr2yr$value})
+    
+    # Apply date selections
     first_date_to_plot <- input$y2y_date[1]
     last_date_to_plot <- input$y2y_date[2]
+    date_range_to_plot <- seq(first_date_to_plot, last_date_to_plot, by="days")
     
+    # Calculate x location of year labels
     label_x <- last_date_to_plot + 
       as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .02
     
-    df_last_year <- df_all %>%
+    # Filter based on incident selections
+    if (grps_to_plot_yr2yr$type == "group") {
+      if (grps_to_plot_yr2yr$value != "All") {
+        df_filtered <- df_all %>%
+          filter(incident_group == grps_to_plot_yr2yr$value)
+      } else {
+        df_filtered <- df_all
+      }
+    } else if (grps_to_plot_yr2yr$type == "incident") {
+      df_filtered <- df_all %>%
+        filter(OFFENSE_DESCRIPTION == grps_to_plot_yr2yr$value)
+    }
+    
+    # Assemble DF with 2019 & 2020 data
+    df_last_year <- df_filtered %>%
       mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
                str_replace("^\\d{4}","2020") %>% as_date) %>%
       filter(YEAR == '2019', 
@@ -374,7 +416,7 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(year = 2019)
     
-    data_2019_2020 <- df_all %>%
+    data_2019_2020 <- df_filtered %>%
       filter(date >= first_date_to_plot,
              date <= last_date_to_plot) %>%
       mutate(date_to_plot = date) %>%
@@ -383,15 +425,24 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(year = 2020) %>%
       bind_rows(df_last_year)
-  
+    
+    # Fill in dates where there are none of a given incident 
+    data_2019_2020 <- tidyr::complete(data_2019_2020, 
+                                      date_to_plot = date_range_to_plot,
+                                      year=2019:2020, 
+                                      fill=list(n=0)) %>%
+      # Remove Feb 29 2019
+      filter(year == 2020 | (year == 2019 & date_to_plot != ymd(20200229)))
+    
+    # Update the incident counters
     output$n_incs_2019 <- renderText({
       data_2019_2020 %>% 
         filter(year == 2019) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
-      })
-   
+    })
+    
     output$n_incs_2020 <- renderText({
       data_2019_2020 %>% 
         filter(year == 2020) %>%
@@ -400,10 +451,11 @@ server <- function(input, output, session) {
         format(big.mark = ",")
     })
     
+    # Plot!
     g <- data_2019_2020 %>%
     ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
       geom_line(size=1, alpha=0.8) +
-      ylim(0, 350) +
+      ylim(0, NA) +
       labs(x = "", y = "Daily Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
@@ -466,9 +518,11 @@ server <- function(input, output, session) {
   
   # Helper function to create list of values to plot
   get_groups_to_plot <- function(grp_list, inc_list) {
+    n_select <- length(grp_list)
+    
     grp_to_plot <- data.frame(value=character(), type=character(), 
                               stringsAsFactors=FALSE)
-    for (i in 1:3) {
+    for (i in 1:n_select) {
       grp <- grp_list[i]
       inc <- inc_list[i]
       
