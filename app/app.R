@@ -30,15 +30,16 @@ legend_label_fontsize = 12 #12 / 20
 year_label_fontsize = 5 #5 / 9
 
 # Define filenames and column data types
-violations_filename <- "violations_major_minor.csv"
+violations_filename <- "offense_codes_descs.csv"
 
 # Load violation classifications
 violations <- read_csv(violations_filename, 
                        col_types = cols(
                          OFFENSE_CODE = col_double(),
-                         Lauren_says_minor = col_logical(),
+                         minor = col_logical(),
                          incident_group = col_character(),
-                         desc = col_character()
+                         OFFENSE_DESCRIPTION = col_character(),
+                         FBI_UCR = col_character()
                        ))
 group_choices <- c("--", "All", violations %>% 
                      pull(incident_group) %>% 
@@ -55,8 +56,8 @@ for (grp in group_choices[3:28]) {
   
   incidents_in_grp <- violations %>%
     filter(incident_group == grp) %>%
-    mutate(code_desc = paste(OFFENSE_CODE, desc, sep=" - ")) %>%
-    arrange(desc) %>%
+    mutate(code_desc = paste(OFFENSE_CODE, OFFENSE_DESCRIPTION, sep=" - ")) %>%
+    arrange(OFFENSE_DESCRIPTION) %>%
     pull(code_desc)
   
   for (incident in incidents_in_grp) {
@@ -317,9 +318,9 @@ server <- function(input, output, session) {
     summarize(n = n())
   
   df_by_incident <- df_all %>%
-    group_by(date = date, desc) %>%
+    group_by(date = date, OFFENSE_DESCRIPTION) %>%
     summarize(n = n()) %>%
-    rename(incident_group = desc) %>%
+    rename(incident_group = OFFENSE_DESCRIPTION) %>%
     ungroup()%>%
     bind_rows(all_df_all) %>%
     bind_rows(df_by_incidentgroup)
@@ -335,7 +336,7 @@ server <- function(input, output, session) {
            labs = paste(format(with_tz(OCCURRED_ON_DATE, tzone="America/New_York"), 
                                format="%A %B %e, %Y at %I:%M %p"), 
                         incident_group,
-                        desc, sep="<br/>")) %>%
+                        OFFENSE_DESCRIPTION, sep="<br/>")) %>%
     filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
   
   # 🗓 2019 v. 2020 🗓 --------------------------------------------------------
@@ -441,7 +442,7 @@ server <- function(input, output, session) {
       shinyjs::enable(inc_selector_name)
       choices <- df_all %>%
         filter(incident_group == group_name) %>%
-        pull(desc) %>%
+        pull(OFFENSE_DESCRIPTION) %>%
         unique() %>%
         sort()
       
@@ -583,7 +584,7 @@ server <- function(input, output, session) {
     
     if ("All" %in% grps_to_map$value) {
       grps_filter <- df_all$incidentgroup %>% unique()
-      incs_filter <- df_all$desc %>% unique()
+      incs_filter <- df_all$OFFENSE_DESCRIPTION %>% unique()
       
       df_to_map_clr <- df_to_map %>%
         mutate(color = "#0055aa")
@@ -596,11 +597,11 @@ server <- function(input, output, session) {
       
       df_to_map_clr <- df_to_map %>%
         mutate(color = ifelse(incident_group == grps_to_map$value[1] | 
-                                desc == grps_to_map$value[1], "#0055aa",
+                                OFFENSE_DESCRIPTION == grps_to_map$value[1], "#0055aa",
                               ifelse(incident_group == grps_to_map$value[2] | 
-                                       desc == grps_to_map$value[2], "#ef404d",
+                                       OFFENSE_DESCRIPTION == grps_to_map$value[2], "#ef404d",
                                      ifelse(incident_group == grps_to_map$value[3] | 
-                                              desc == grps_to_map$value[3], "#fbb416", NA))))
+                                              OFFENSE_DESCRIPTION == grps_to_map$value[3], "#fbb416", NA))))
                                             
       
       colors <- c("#0055aa", "#ef404d", "#fbb416")
