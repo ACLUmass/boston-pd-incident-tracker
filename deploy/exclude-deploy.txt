@@ -7,3 +7,4 @@ query_log.rds
 new_data_log.txt
 all_bpd_incidents_cumulative.rds
 cron_log.txt
+.Renviron

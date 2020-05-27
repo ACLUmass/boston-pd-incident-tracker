@@ -11,6 +11,7 @@ library(httr)
 library(jsonlite)
 library(readr)
 library(aws.s3)
+library(rvest)
 
 # Initialization --------------------------------------------------------------
 
@@ -95,7 +96,7 @@ get_all_incident_data <- function(testing=F) {
   boston_crime_incidents_url <- "https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system"
   
   # Scrape download button link from page
-  url_to_temp_csv <- read_html(boston_crime_incidents_url) %>%
+  url_to_temp_csv <- xml2::read_html(boston_crime_incidents_url) %>%
     html_nodes(".resource-list") %>%
     html_nodes(".btn-group") %>% 
     `[[`(1) %>%
