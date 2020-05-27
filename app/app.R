@@ -213,20 +213,28 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Major & Minor Incidents Comparison", 
                wellPanel(id="internal_well",
-                         em("“Major” incidents include charges like homicide,",
-                            "sexual assault, most robbery/burglary, assault and",
-                            "battery, arson, or weapons possession. “Minor” incidents",
-                            "include incidents like larceny, vandalism, sex work,",
-                            "drug possession, disorderly conduct, fare evasion,",
-                            "noise complaints, and motor vehicle infractions."),
+                         # em("“Major” incidents include charges like homicide,",
+                         #    "sexual assault, most robbery/burglary, assault and",
+                         #    "battery, arson, or weapons possession. “Minor” incidents",
+                         #    "include incidents like larceny, vandalism, sex work,",
+                         #    "drug possession, disorderly conduct, fare evasion,",
+                         #    "noise complaints, and motor vehicle infractions."),
+                         em("We use the FBI", 
+                          a("Uniform Crime Reporting", href="https://ucr.fbi.gov/additional-ucr-publications/ucr_handbook.pdf"),
+                            "(UCR) categories to",
+                            "delineate between 'major' and 'minor' incidents.",
+                            "UCR Part I incidents, here categorized as major, include homicide, rape,",
+                            "robbery, aggravated assault, burglary, larceny, and human",
+                            "trafficking. All other incidents are ",
+                            "UCR Part II, here categorized as minor."),
                          br(), br(),
                          p("Select date range to plot:"),
                          dateRangeInput("maj_min_date", label="")),
                splitLayout(
                  div(h2(textOutput("n_incs_maj"), align="center"),
-                     p("Major incidents during selected date range", align="center")),
+                     p("UCR Part I incidents during selected date range", align="center")),
                  div(h2(textOutput("n_incs_min"), align="center"),
-                     p("Minor incidents during selected date range", align="center"))
+                     p("UCR Part II incidents during selected date range", align="center"))
                ),
                withSpinner(plotlyOutput("major_minor_plot"), 
                            type=4, color="#b5b5b5", size=0.5)),
@@ -280,8 +288,8 @@ server <- function(input, output, session) {
                       bucket = aws_s3_bucket) %>%
     mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE),
            date = date(OCCURRED_ON_DATE)) %>%
-    merge(violations,
-          by="OFFENSE_CODE", all.x=T)
+    merge(violations %>% select(-OFFENSE_CODE),
+          by="OFFENSE_DESCRIPTION", all.x=T)
   
   # Get total number of incidents
   n_incidents <- df_all %>% nrow()
@@ -723,13 +731,13 @@ server <- function(input, output, session) {
     data_major_minor <- df_all %>%
       filter(date <= last_date_to_plot,
              date >= first_date_to_plot) %>%
-      group_by(date, Lauren_says_minor) %>%
+      group_by(date, FBI_UCR) %>%
       summarize(n = n())
     
     # Counts of major & minor in given date range
     output$n_incs_maj <- renderText({
       data_major_minor %>%
-        filter(Lauren_says_minor==F) %>%
+        filter(FBI_UCR==1) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -737,7 +745,7 @@ server <- function(input, output, session) {
     
     output$n_incs_min <- renderText({
       data_major_minor %>%
-        filter(Lauren_says_minor==T) %>%
+        filter(FBI_UCR==2) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -761,9 +769,8 @@ server <- function(input, output, session) {
     }
     
     g <- data_major_minor %>%
-    ggplot(aes(x=date, y = n, color = Lauren_says_minor)) +
+    ggplot(aes(x=date, y = n, color = FBI_UCR)) +
       geom_line(size=1, show.legend = FALSE, alpha=.8) +
-      ylim(0, 200) +
       labs(x = "", y = "Number of Incidents", color="") +
       theme(plot.title= element_text(family="gtam", face='bold'),
             text = element_text(family="gtam", size = axis_label_fontsize),
@@ -773,9 +780,9 @@ server <- function(input, output, session) {
                    expand = expand_scale(mult = c(0, .2))) +
       scale_color_manual(values=c("#ef404d", "#fbb416")) +
       geom_text(data = subset(data_major_minor, date == last_date_to_plot), 
-                aes(label = ifelse(Lauren_says_minor == "TRUE", 
-                                   "Minor\nIncidents", "Major\nIncidents"), 
-                    color = Lauren_says_minor,
+                aes(label = ifelse(FBI_UCR == 2, 
+                                   "UCR Part II\nIncidents", "UCR Part I\nIncidents"), 
+                    color = FBI_UCR,
                     x = label_x,
                     y = maj_min_labs), 
                 family="gtam", fontface="bold", hjust=0) +
