@@ -90,7 +90,7 @@ h2 {
   overflow: visible;
 }
 
-/* Fix text not warpping issue */
+/* Fix text not wrapping issue */
 .shiny-split-layout p {
   white-space: normal;
 }

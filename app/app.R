@@ -74,6 +74,15 @@ font_add("gtam", "www/fonts/gtamerica/GT-America-Standard-Regular.ttf",
          bold = "www/fonts/gtamerica/GT-America-Standard-Bold.ttf")
 showtext_auto()
 
+# Write warning about incident types changing
+inc_warning <- 'The Boston Police have changed their categorization system 
+for incidents since they first began reporting this data in 2015. One major change 
+seems to have occurred on September 29, 2019. Thus, please be aware that to 
+accurately compare one kind of incident across time, multiple different incident 
+labels might need to be analyzed together. For example, fires are now all reported under 
+"FIRE REPORT", but previously were divided into “FIRE REPORT - HOUSE, BUILDING, 
+ETC.” and “FIRE REPORT - CAR, BRUSH, ETC.”.'
+
 # UI --------------------------------------------------------------
 ui <- fluidPage(theme = "bpd_covid19_app.css",
   
@@ -105,6 +114,9 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                p("The data sourced for all visualizations on this site are available for download",
                  actionLink("link_to_download", "here."), style="margin-top: 1rem;"),
                
+               h4("Note on Time Analysis"),
+               p(inc_warning),
+               
                h4("Source Code"),
                p("Interested programmers can view the source code for this app, written in R, on", 
                  a("GitHub.", href="https://github.com/ACLUmass/boston-pd-incident-tracker", target="_blank"))
@@ -112,7 +124,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Year-to-Year Comparison", 
                wellPanel(id="internal_well",
-                         p("Select one kind of incident to plot:", 
+                         p("Select one kind of incident* to plot:", 
                            actionLink("modal_incidents3", label = NULL, icon=icon("info-circle"))),
                          splitLayout(
                             selectInput("select_incidentgroup_yr2yr", "CATEGORY", 
@@ -122,20 +134,25 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                                             selected = "--", multiple=FALSE)
                             ),
                          p("Select date range in 2020 to compare to 2019:"),
-                         dateRangeInput("y2y_date", label="")),
+                         dateRangeInput("y2y_date", label=""),
+                         em("*Be aware of how",
+                            actionLink("modal_warning1", "changes in incident categories over time"),
+                            "might affect analysis.", style="padding-top: 1rem; display: block;")
+                         ),
                splitLayout(
                  div(h2(textOutput("n_incs_2019"), align="center"),
                      p(textOutput("yr2yr_type", inline=T),
                        "incidents during selected date range in 2019", align="center")),
                  div(h2(textOutput("n_incs_2020"), align="center"),
                      p(textOutput("yr2yr_type1", inline=T),
-                       "incidents during selected date range in 2020", align="center"))
+                       "incidents during selected date range in 2020", align="center")
+                     )),
+               withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
-               withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)),
       
       tabPanel("Incidents by Type Over Time",
                wellPanel(id="internal_well",
-                 p("Select up to three kinds of incidents to plot versus time.", 
+                 p("Select up to three kinds of incidents* to plot versus time.", 
                    actionLink("modal_incidents", label = NULL, icon=icon("info-circle"))),
                  em("Category:", style="display: inline-block; width: 100px;"),
                  span(style="display: inline-block; width: calc(100% - 110px);",
@@ -160,7 +177,10 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                    )
                  ),
                  p("Select date range to plot:"),
-                 dateRangeInput("inc_type_date", label="")
+                 dateRangeInput("inc_type_date", label=""),
+                 em("*Be aware of how",
+                    actionLink("modal_warning2", "changes in incident categories over time"),
+                    "might affect analysis.", style="padding-top: 1rem; display: block;")
                ),
                splitLayout(
                  div(h2(textOutput("n_incs_inc1"), align="center"),
@@ -178,7 +198,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
       
       tabPanel("Incident Locations",
                wellPanel(id="internal_well",
-                 p("Select up to three kinds of incidents to plot versus time.", 
+                 p("Select up to three kinds of incidents* to plot versus time.", 
                    actionLink("modal_incidents2", label = NULL, icon=icon("info-circle"))),
                  em("Category:", style="display: inline-block; width: 100px;"),
                  span(style="display: inline-block; width: calc(100% - 110px);",
@@ -205,7 +225,10 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  p("Select date range in 2020 to compare to 2019:"),
                  dateRangeInput("loc_date", label="",
                                 start = today - months(1) - days(1), end = today - days(1),
-                                min = "2015-06-15", max = today - days(1))
+                                min = "2015-06-15", max = today - days(1)),
+                 em("*Be aware of how",
+                    actionLink("modal_warning3", "changes in incident categories over time"),
+                    "might affect analysis.", style="padding-top: 1rem; display: block;")
                ),
                uiOutput("range_warning"),
                splitLayout(align="center", h2("2019"), h2("2020")),
@@ -366,9 +389,13 @@ server <- function(input, output, session) {
                          min = ymd(20200101), max = last_date_to_plot)
   })
   
-  # Connect modal to incident info link
+  # Connect modal2 so incident info link
   observeEvent(input$modal_incidents3, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  observeEvent(input$modal_warning1, {
+    showModal(modalDialog(renderUI(list(h4("Note on Time Analysis"), inc_warning)), 
+                          easyClose = TRUE, footer = NULL))
   })
   
   # Update individual incident dropdowns when group is changed
@@ -480,6 +507,10 @@ server <- function(input, output, session) {
   # Connect modal to incident info link
   observeEvent(input$modal_incidents, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  observeEvent(input$modal_warning2, {
+    showModal(modalDialog(renderUI(list(h4("Note on Time Analysis"), inc_warning)), 
+                          easyClose = TRUE, footer = NULL))
   })
   
   # Define helper function to update incident dropdown options when
@@ -619,6 +650,10 @@ server <- function(input, output, session) {
   # Connect modal to incident info link
   observeEvent(input$modal_incidents2, {
     showModal(modalDialog(renderUI(modal_text), easyClose = TRUE, footer = NULL))
+  })
+  observeEvent(input$modal_warning3, {
+    showModal(modalDialog(renderUI(list(h4("Note on Time Analysis"), inc_warning)), 
+                          easyClose = TRUE, footer = NULL))
   })
   
   # Update individual incident dropdowns when group is changed

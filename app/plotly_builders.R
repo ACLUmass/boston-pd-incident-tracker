@@ -88,7 +88,7 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
       gsub("date", "Date", .)
     
     if (plot_type == "major_minor") {
-      inc_type <- ifelse(g$x$data[[i]]$name == "TRUE", "Minor", "Major")
+      inc_type <- ifelse(g$x$data[[i]]$name == "2", "Minor", "Major")
       text_rep <- text_rep %>%
         gsub("n:", paste(inc_type, "Incidents:"), .)
     } else {
