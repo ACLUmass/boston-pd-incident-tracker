@@ -224,7 +224,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  ),
                  p("Select date range in 2020 to compare to 2019:"),
                  dateRangeInput("loc_date", label="",
-                                start = today - months(1) - days(1), end = today - days(1),
+                                start = today - days(31), end = today - days(1),
                                 min = "2015-06-15", max = today - days(1)),
                  em("*Be aware of how",
                     actionLink("modal_warning3", "changes in incident categories over time"),
@@ -339,7 +339,7 @@ server <- function(input, output, session) {
   output$last_query_time_str <- renderText({last_query_time})
   
   last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
-  first_date_to_plot <- last_date_to_plot - months(3)
+  first_date_to_plot <- last_date_to_plot - days(90)
   
   earliest_date <- min(df_all$date, na.rm=T)
   
@@ -717,7 +717,7 @@ server <- function(input, output, session) {
     last_date_to_plot <- input$loc_date[2]
     
     if (last_date_to_plot - first_date_to_plot > days(31)) {
-      first_date_to_plot <- last_date_to_plot - months(1)
+      first_date_to_plot <- last_date_to_plot - days(30)
       
       output$range_warning <- renderUI({
         div(id="dev-warning",
