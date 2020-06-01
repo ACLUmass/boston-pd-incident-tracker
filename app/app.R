@@ -12,11 +12,15 @@ library(plotly)
 library(aws.s3)
 
 source("plotly_builders.R")
+source("send_error_email.R")
 
 # Initialization --------------------------------------------------------------
 
 # Read environment vars
 readRenviron(".Renviron")
+
+# Set up function to email me if there's an error
+options(shiny.error = send_email)
 
 # Set up connection to S3 bucket
 aws_s3_bucket <- get_bucket("app-bpd-incidents")
@@ -67,7 +71,7 @@ for (grp in group_choices[3:28]) {
 }
 
 # Define today's date
-today <- date(now())
+today_date <- lubridate::date(now())
 
 # Load ggplot-friendly font using show_text
 font_add("gtam", "www/fonts/gtamerica/GT-America-Standard-Regular.ttf",
@@ -224,8 +228,8 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                  ),
                  p("Select date range in 2020 to compare to 2019:"),
                  dateRangeInput("loc_date", label="",
-                                start = today - days(31), end = today - days(1),
-                                min = "2015-06-15", max = today - days(1)),
+                                start = today_date - days(31), end = today_date - days(1),
+                                min = "2015-06-15", max = today_date - days(1)),
                  em("*Be aware of how",
                     actionLink("modal_warning3", "changes in incident categories over time"),
                     "might affect analysis.", style="padding-top: 1rem; display: block;")
@@ -321,7 +325,7 @@ server <- function(input, output, session) {
   df_all <- s3readRDS(object = "all_bpd_incidents_cumulative.rds", 
                       bucket = aws_s3_bucket) %>%
     mutate(OFFENSE_CODE = as.numeric(OFFENSE_CODE),
-           date = date(OCCURRED_ON_DATE)) %>%
+           date = lubridate::date(OCCURRED_ON_DATE)) %>%
     merge(violations %>% select(-OFFENSE_CODE),
           by="OFFENSE_DESCRIPTION", all.x=T)
   
@@ -338,7 +342,7 @@ server <- function(input, output, session) {
     format(format="%A %B %e, %Y at %I:%M %p %Z")
   output$last_query_time_str <- renderText({last_query_time})
   
-  last_date_to_plot <- date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
+  last_date_to_plot <- lubridate::date(max(df_all$OCCURRED_ON_DATE, na.rm=T) - days(1))
   first_date_to_plot <- last_date_to_plot - days(90)
   
   earliest_date <- min(df_all$date, na.rm=T)

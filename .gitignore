@@ -17,3 +17,7 @@ rsconnect/
 
 # PyCharm files
 .idea
+
+# Email auth
+app/.secret
+app/credentials.json
