@@ -826,62 +826,63 @@ server <- function(input, output, session) {
              date >= first_date_to_plot) %>%
       group_by(date, FBI_UCR) %>%
       summarize(n = n())
+
+    if (nrow(data_major_minor) > 0) {
     
-    # Counts of major & minor in given date range
-    output$n_incs_maj <- renderText({
-      data_major_minor %>%
-        filter(FBI_UCR==1) %>%
+      # Counts of major & minor in given date range
+      output$n_incs_maj <- renderText({
+        data_major_minor %>%
+          filter(FBI_UCR==1) %>%
+          pull(n) %>%
+          sum() %>%
+          format(big.mark = ",")
+      })
+      
+      output$n_incs_min <- renderText({
+        data_major_minor %>%
+          filter(FBI_UCR==2) %>%
+          pull(n) %>%
+          sum() %>%
+          format(big.mark = ",")
+      })
+
+      # Deal with UCR labels being on top of each other
+      ucr_label_data <- data_major_minor %>%
+        ungroup() %>%
+        filter(date == last_date_to_plot) %>%
+        mutate(date = label_x)
+
+      labels_too_close <- ucr_label_data %>%
         pull(n) %>%
-        sum() %>%
-        format(big.mark = ",")
-    })
-    
-    output$n_incs_min <- renderText({
-      data_major_minor %>%
-        filter(FBI_UCR==2) %>%
-        pull(n) %>%
-        sum() %>%
-        format(big.mark = ",")
-    })
-    
-    labels_too_close <- data_major_minor %>%
-      filter(date == last_date_to_plot) %>%
-      pull(n) %>%
-      diff() < 25
-    
-    maj_min_labs <- data_major_minor %>%
-      filter(date == last_date_to_plot) %>%
-      pull(n)
-    
-    if (labels_too_close) {
-      if (maj_min_labs %>% unique() %>% length() == 1) {
-        maj_min_labs[2] <- max(maj_min_labs) + 25
-      } else {
-        maj_min_labs[maj_min_labs == max(maj_min_labs)] <- max(maj_min_labs) + 15
+        diff() < 25
+      
+      if (labels_too_close) {
+        if (ucr_label_data$n %>% unique() %>% length() == 1) {
+          ucr_label_data$n[2] <- max(ucr_label_data$n) + 25
+        } else {
+          ucr_label_data$n[ucr_label_data$n == max(ucr_label_data$n)] <- max(ucr_label_data$n) + 15
+        }
       }
+      
+      g <- data_major_minor %>%
+      ggplot(aes(x=date, y = n, color = FBI_UCR)) +
+        geom_line(size=1, show.legend = FALSE, alpha=.8) +
+        labs(x = "", y = "Number of Incidents", color="") +
+        theme(plot.title= element_text(family="gtam", face='bold'),
+              text = element_text(family="gtam", size = axis_label_fontsize),
+              legend.position="none") +
+        scale_x_date(date_labels = "%b %e ",
+                     limits = c(first_date_to_plot, label_x),
+                     expand = expansion(mult = c(0, .2))) +
+        scale_color_manual(values=c("#ef404d", "#fbb416")) +
+        geom_text(data = ucr_label_data, 
+                  aes(label = ifelse(FBI_UCR == 2, 
+                                     "UCR Part II\nIncidents", "UCR Part I\nIncidents")),
+                  family="gtam", fontface="bold", hjust=0) +
+        coord_cartesian(clip = 'off')
+      
+      lines_plotly_style(g, "Incidents", "major_minor")
     }
-    
-    g <- data_major_minor %>%
-    ggplot(aes(x=date, y = n, color = FBI_UCR)) +
-      geom_line(size=1, show.legend = FALSE, alpha=.8) +
-      labs(x = "", y = "Number of Incidents", color="") +
-      theme(plot.title= element_text(family="gtam", face='bold'),
-            text = element_text(family="gtam", size = axis_label_fontsize),
-            legend.position="none") +
-      scale_x_date(date_labels = "%b %e ",
-                   limits = c(first_date_to_plot, label_x),
-                   expand = expand_scale(mult = c(0, .2))) +
-      scale_color_manual(values=c("#ef404d", "#fbb416")) +
-      geom_text(data = subset(data_major_minor, date == last_date_to_plot), 
-                aes(label = ifelse(FBI_UCR == 2, 
-                                   "UCR Part II\nIncidents", "UCR Part I\nIncidents"), 
-                    color = FBI_UCR,
-                    x = label_x,
-                    y = maj_min_labs), 
-                family="gtam", fontface="bold", hjust=0) +
-      coord_cartesian(clip = 'off')
-    
-    lines_plotly_style(g, "Incidents", "major_minor")
     
   })
   

@@ -73,9 +73,17 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
     traces_to_hide <- 0
     
   } else if (plot_type == "major_minor") {
+
+    n_traces <- length(g$x$data)
+
     traces_lightback <- 1:2
     traces_darkback <- 0
-    traces_to_hide <- 3:4
+
+    if (n_traces == 4) {
+      traces_to_hide <- 3:4
+    } else if (n_traces == 5) {
+      traces_to_hide <- 3:5
+    }
       
     g <- g %>%
       style(textposition = "right", traces = traces_to_hide)
