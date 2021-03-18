@@ -485,7 +485,24 @@ server <- function(input, output, session) {
         sum() %>%
         format(big.mark = ",")
     })
-    
+
+    # Handle when labels are too close
+    year_label_data <- subset(data_2019_2020, date_to_plot == last_date_to_plot)
+    years_y_dist <- abs(year_label_data$n[1] - year_label_data$n[2]) / max(data_2019_2020$n)
+
+    if (years_y_dist < 0.1) {
+      if (years_y_dist == 0) {
+        year_label_data <- year_label_data %>%
+          mutate(n = ifelse(year == current_year, 
+                          n + max(data_2019_2020$n) * .1, n))
+      } else {
+        year_label_data <- year_label_data %>%
+          mutate(rank = dense_rank(desc(n)),
+                 n = ifelse(rank == 1, 
+                            n + max(data_2019_2020$n) * .1, n))
+      } 
+    }
+
     # Plot!
     g <- data_2019_2020 %>%
     ggplot(aes(x = date_to_plot, y = n, color=as.character(year))) +
