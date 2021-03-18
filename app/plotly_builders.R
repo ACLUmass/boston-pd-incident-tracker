@@ -46,7 +46,7 @@ legend_layout_bottom <- list(orientation = "h",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Convert lines to ggplotly
-lines_plotly_style <- function(gg_plot, y_label, plot_type) {
+lines_plotly_style <- function(gg_plot, y_label, plot_type, current_year=NA) {
 
   g <- ggplotly(gg_plot, tooltip = c("x", "y"))
   
@@ -91,9 +91,20 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
   
   # Replace tooltip key with better names
   for (i in 1:length(g$x$data)) {
+
     text_rep <- g$x$data[[i]]$text %>%
       gsub("date_to_plot", "Date", .) %>%
       gsub("date", "Date", .)
+
+    # Fix date for year-to-year
+    if (plot_type == "year_to_year") {
+      if (g$x$data[[i]]$name != as.character(current_year)) {
+        prior_year <- current_year - 1 
+        text_rep <- text_rep %>%
+          gsub(current_year, prior_year, .)
+
+      }
+    }
     
     if (plot_type == "major_minor") {
       inc_type <- ifelse(g$x$data[[i]]$name == "2", "Minor", "Major")
@@ -102,11 +113,6 @@ lines_plotly_style <- function(gg_plot, y_label, plot_type) {
     } else {
       text_rep <- text_rep %>%
         gsub("n:", "Incidents:", .)
-    }
-    
-    if (g$x$data[[i]]$name == "2019") {
-      text_rep <- text_rep %>%
-        gsub("\\d{4}", "2019", .)
     }
     
     g <- g %>%

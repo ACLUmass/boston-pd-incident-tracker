@@ -137,7 +137,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                             selectInput("select_incident_yr2yr","SUB-CATEGORY", choices = group_choices,
                                             selected = "--", multiple=FALSE)
                             ),
-                         p("Select date range in 2020 to compare to 2019:"),
+                         p("Select date range to compare to the prior year:"),
                          dateRangeInput("y2y_date", label=""),
                          em("*Be aware of how",
                             actionLink("modal_warning1", "changes in incident categories over time"),
@@ -146,10 +146,10 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                splitLayout(
                  div(h2(textOutput("n_incs_2019"), align="center"),
                      p(textOutput("yr2yr_type", inline=T),
-                       "incidents during selected date range in 2019", align="center")),
+                       "incidents during selected date range in prior year", align="center")),
                  div(h2(textOutput("n_incs_2020"), align="center"),
                      p(textOutput("yr2yr_type1", inline=T),
-                       "incidents during selected date range in 2020", align="center")
+                       "incidents during selected date range", align="center")
                      )),
                withSpinner(plotlyOutput("year_to_year_plot"), type=4, color="#b5b5b5", size=0.5)
                ),
@@ -226,7 +226,7 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                                     selected = "All", multiple=FALSE)
                       )
                  ),
-                 p("Select date range in 2020 to compare to 2019:"),
+                 p("Select date range to compare to prior year:"),
                  dateRangeInput("loc_date", label="",
                                 start = today_date - days(31), end = today_date - days(1),
                                 min = "2015-06-15", max = today_date - days(1)),
@@ -235,7 +235,9 @@ ui <- fluidPage(theme = "bpd_covid19_app.css",
                     "might affect analysis.", style="padding-top: 1rem; display: block;")
                ),
                uiOutput("range_warning"),
-               splitLayout(align="center", h2("2019"), h2("2020")),
+               splitLayout(align="center", 
+                           h2(textOutput("prior_year_str", inline=T)), 
+                           h2(textOutput("current_year_str", inline=T))),
                p(align="center", "Showing incident locations between", 
                  textOutput("first_date_str", inline=T), 
                  "and", 
@@ -385,7 +387,7 @@ server <- function(input, output, session) {
                         OFFENSE_DESCRIPTION, sep="<br/>")) %>%
     filter(Long < -69 & Long > -74, Lat < 43 & Lat > 41)
   
-  # 🗓 2019 v. 2020 🗓 --------------------------------------------------------
+  # 🗓 Current year v. prior year 🗓 --------------------------------------------------------
 
   isolate({
     updateDateRangeInput(session, "y2y_date", 
@@ -417,7 +419,9 @@ server <- function(input, output, session) {
     first_date_to_plot <- input$y2y_date[1]
     last_date_to_plot <- input$y2y_date[2]
     date_range_to_plot <- seq(first_date_to_plot, last_date_to_plot, by="days")
-    
+    current_year <- year(last_date_to_plot)
+    prior_year <- current_year - 1   
+
     # Calculate x location of year labels
     label_x <- last_date_to_plot + 
       as.difftime(last_date_to_plot - first_date_to_plot, units="days") * .02
@@ -435,17 +439,17 @@ server <- function(input, output, session) {
         filter(OFFENSE_DESCRIPTION == grps_to_plot_yr2yr$value)
     }
     
-    # Assemble DF with 2019 & 2020 data
+    # Assemble DF with 2 years of data
+    
     df_last_year <- df_filtered %>%
       mutate(date_to_plot = OCCURRED_ON_DATE %>% as.character %>%
-               str_replace("^\\d{4}","2020") %>% as_date) %>%
-      filter(YEAR == '2019', 
-             date_to_plot <= last_date_to_plot, 
+               as_date() + years(1)) %>%
+      filter(date_to_plot <= last_date_to_plot, 
              date_to_plot >= first_date_to_plot) %>%
       group_by(date_to_plot) %>%
       summarize(n = n())  %>%
       ungroup() %>%
-      mutate(year = 2019)
+      mutate(year = prior_year)
     
     data_2019_2020 <- df_filtered %>%
       filter(date >= first_date_to_plot,
@@ -454,21 +458,21 @@ server <- function(input, output, session) {
       group_by(date_to_plot) %>%
       summarize(n = n()) %>%
       ungroup() %>%
-      mutate(year = 2020) %>%
+      mutate(year = current_year) %>%
       bind_rows(df_last_year)
     
     # Fill in dates where there are none of a given incident 
     data_2019_2020 <- tidyr::complete(data_2019_2020, 
                                       date_to_plot = date_range_to_plot,
-                                      year=2019:2020, 
+                                      year=c(prior_year, current_year), 
                                       fill=list(n=0)) %>%
       # Remove Feb 29 2019
-      filter(year == 2020 | (year == 2019 & date_to_plot != ymd(20200229)))
+      filter(year > 2019 | (year == 2019 & date_to_plot != ymd(20200229)))
     
     # Update the incident counters
     output$n_incs_2019 <- renderText({
       data_2019_2020 %>% 
-        filter(year == 2019) %>%
+        filter(year == prior_year) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -476,7 +480,7 @@ server <- function(input, output, session) {
     
     output$n_incs_2020 <- renderText({
       data_2019_2020 %>% 
-        filter(year == 2020) %>%
+        filter(year == current_year) %>%
         pull(n) %>%
         sum() %>%
         format(big.mark = ",")
@@ -492,17 +496,17 @@ server <- function(input, output, session) {
             text = element_text(family="gtam", size = axis_label_fontsize),
             legend.position='none') +
       scale_color_manual(values=c("black", "#ef404d")) +
-      geom_text(data = subset(data_2019_2020, date_to_plot == last_date_to_plot), 
+      geom_text(data = year_label_data, 
                 aes(label = year, colour = as.character(year),
                     x = label_x,
                     y = n), 
                 family="gtam", fontface="bold", size=5) +
       scale_x_date(date_labels = "%b %e ",
                    limits = c(first_date_to_plot, label_x),
-                   expand = expand_scale(mult = c(.05, .15))) +
+                   expand = expansion(mult = c(.05, .15))) +
       coord_cartesian(clip = 'off')
     
-    lines_plotly_style(g, "Incidents", "year_to_year")
+    lines_plotly_style(g, "Incidents", "year_to_year", current_year=current_year)
     
   })
   
@@ -744,12 +748,18 @@ server <- function(input, output, session) {
     
     output$first_date_str <- renderText({format(first_date_to_plot, format="%B %e")})
     output$last_date_str <- renderText({format(last_date_to_plot, format="%B %e.\n")})
+
+    current_year <- year(last_date_to_plot)
+    prior_year <- current_year - 1
     
+    output$current_year_str <- renderText({current_year})
+    output$prior_year_str <- renderText({prior_year})
+
     # Create 2019 map
     df_to_map_2019 <- df_to_map_clr %>%
       filter(!is.na(color),
-             date >= ymd(gsub("\\d{4}", "2019", first_date_to_plot)),
-             date <= ymd(gsub("\\d{4}", "2019", last_date_to_plot)))
+             date >= as_date(first_date_to_plot) - years(1),
+             date <= as_date(last_date_to_plot) - years(1))
     
     map_2019 <- df_to_map_2019 %>%
       leaflet(options = leafletOptions(attributionControl = T)) %>%
