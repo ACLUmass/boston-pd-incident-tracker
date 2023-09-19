@@ -12,7 +12,7 @@ library(plotly)
 library(aws.s3)
 
 source("plotly_builders.R")
-source("send_error_email.R")
+# source("send_error_email.R")
 
 # Initialization --------------------------------------------------------------
 
@@ -20,7 +20,7 @@ source("send_error_email.R")
 readRenviron(".Renviron")
 
 # Set up function to email me if there's an error
-options(shiny.error = send_email)
+# options(shiny.error = send_email)
 
 # Set up connection to S3 bucket
 aws_s3_bucket <- get_bucket("app-bpd-incidents")
@@ -408,8 +408,7 @@ server <- function(input, output, session) {
   observe({update_incs_by_group(input$select_incidentgroup_yr2yr)})
   
   output$year_to_year_plot <- renderPlotly({
-    
-    # Determine incident groups/types to plot
+     # Determine incident groups/types to plot
     grps_to_plot_yr2yr <- get_groups_to_plot(input$select_incidentgroup_yr2yr, 
                                              input$select_incident_yr2yr)
     output$yr2yr_type <- renderText({grps_to_plot_yr2yr$value})
