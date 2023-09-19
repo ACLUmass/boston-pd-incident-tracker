@@ -655,6 +655,8 @@ server <- function(input, output, session) {
     
     g <- df_by_incident %>%
       filter(incident_group %in% grps_to_plot) %>%
+      filter(date <= last_date_to_plot,
+             date >= first_date_to_plot) %>%
     ggplot(aes(x=date, y = n, color=incident_group)) +
       geom_line(size=1, show.legend = T, alpha=0.8) +
       labs(x = "", y = "Number of Incidents", color="") +
