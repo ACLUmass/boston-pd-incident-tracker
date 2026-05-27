@@ -98,10 +98,12 @@ get_all_incident_data <- function(testing=F) {
   # Scrape download button link from page
   url_to_temp_csv <- xml2::read_html(boston_crime_incidents_url) %>%
     html_nodes(".resource-list") %>%
-    html_nodes(".btn-group") %>% 
-    `[[`(1) %>%
+    # I think code below was our problem because they don't seem to have this class anymore
+    # Is the idea here that we only have to grab the top row because it's the most recent file?
+    # html_nodes(".btn-group") %>% 
+    # `[[`(1) %>%
     html_nodes(".btn") %>%
-    `[[`(2) %>%
+    `[[`(1) %>%
     html_attr("href")
   
   # Set query time
